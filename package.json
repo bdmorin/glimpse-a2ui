@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/glimpse.mjs",
   "scripts": {
-    "build": "swiftc src/glimpse.swift -o src/glimpse",
+    "build": "swiftc -O src/glimpse.swift -o src/glimpse",
     "postinstall": "npm run build",
     "test": "node test.mjs"
   },

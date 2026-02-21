@@ -18,6 +18,8 @@ class GlimpseWindow extends EventEmitter {
     this.#proc = proc;
     this.#pendingHTML = initialHTML;
 
+    proc.stdin.on('error', () => {}); // Swallow EPIPE if Swift exits first
+
     const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
 
     rl.on('line', (line) => {
@@ -65,6 +67,7 @@ class GlimpseWindow extends EventEmitter {
   }
 
   #write(obj) {
+    if (this.#closed) return;
     this.#proc.stdin.write(JSON.stringify(obj) + '\n');
   }
 
