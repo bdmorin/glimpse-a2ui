@@ -11,10 +11,12 @@ const BINARY = join(__dirname, 'glimpse');
 class GlimpseWindow extends EventEmitter {
   #proc;
   #closed = false;
+  #pendingHTML = null;
 
-  constructor(proc) {
+  constructor(proc, initialHTML) {
     super();
     this.#proc = proc;
+    this.#pendingHTML = initialHTML;
 
     const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
 
@@ -29,7 +31,14 @@ class GlimpseWindow extends EventEmitter {
 
       switch (msg.type) {
         case 'ready':
-          this.emit('ready');
+          if (this.#pendingHTML) {
+            // First ready = blank page loaded. Send the queued HTML.
+            this.setHTML(this.#pendingHTML);
+            this.#pendingHTML = null;
+          } else {
+            // Subsequent ready = user HTML loaded. Notify caller.
+            this.emit('ready');
+          }
           break;
         case 'message':
           this.emit('message', msg.data);
@@ -41,7 +50,6 @@ class GlimpseWindow extends EventEmitter {
           }
           break;
         default:
-          // Unknown message type — ignore
           break;
       }
     });
@@ -86,12 +94,5 @@ export function open(html, options = {}) {
   if (options.title != null)  args.push('--title',  options.title);
 
   const proc = spawn(BINARY, args, { stdio: ['pipe', 'pipe', 'inherit'] });
-  const win = new GlimpseWindow(proc);
-
-  // Send HTML once the webview signals ready
-  win.once('ready', () => {
-    win.setHTML(html);
-  });
-
-  return win;
+  return new GlimpseWindow(proc, html);
 }

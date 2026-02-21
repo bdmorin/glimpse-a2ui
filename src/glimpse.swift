@@ -56,8 +56,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     var webView: WKWebView!
     let config: Config
 
-    private var readyEmitted = false
-
     nonisolated init(config: Config) {
         self.config = config
     }
@@ -177,11 +175,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         MainActor.assumeIsolated {
-            if !readyEmitted {
-                readyEmitted = true
-                writeToStdout(["type": "ready"])
-                log("ready emitted")
-            }
+            writeToStdout(["type": "ready"])
         }
     }
 
