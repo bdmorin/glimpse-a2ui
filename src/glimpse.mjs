@@ -83,6 +83,10 @@ class GlimpseWindow extends EventEmitter {
     this.#write({ type: 'close' });
   }
 
+  loadFile(path) {
+    this.#write({ type: 'file', path });
+  }
+
   followCursor(enabled) {
     this.#write({ type: 'follow-cursor', enabled });
   }
@@ -105,6 +109,7 @@ export function open(html, options = {}) {
   if (options.transparent)  args.push('--transparent');
   if (options.clickThrough) args.push('--click-through');
   if (options.followCursor) args.push('--follow-cursor');
+  if (options.autoClose)   args.push('--auto-close');
 
   if (options.x != null) args.push('--x', String(options.x));
   if (options.y != null) args.push('--y', String(options.y));
@@ -114,4 +119,33 @@ export function open(html, options = {}) {
 
   const proc = spawn(BINARY, args, { stdio: ['pipe', 'pipe', 'inherit'] });
   return new GlimpseWindow(proc, html);
+}
+
+export function prompt(html, options = {}) {
+  return new Promise((resolve, reject) => {
+    const win = open(html, { ...options, autoClose: true });
+    let resolved = false;
+
+    const timer = options.timeout
+      ? setTimeout(() => {
+          if (!resolved) { resolved = true; win.close(); reject(new Error('Prompt timed out')); }
+        }, options.timeout)
+      : null;
+
+    win.once('message', (data) => {
+      if (!resolved) {
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        resolve(data);
+      }
+    });
+
+    win.once('closed', () => {
+      if (timer) clearTimeout(timer);
+      if (!resolved) {
+        resolved = true;
+        resolve(null); // User closed window without sending a message
+      }
+    });
+  });
 }
