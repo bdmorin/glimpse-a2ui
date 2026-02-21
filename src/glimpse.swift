@@ -131,7 +131,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             window.isOpaque = false
             window.backgroundColor = .clear
         }
-        if let x = config.x, let y = config.y {
+        if config.followCursor {
+            let mouse = NSEvent.mouseLocation
+            let x = mouse.x + CGFloat(config.cursorOffsetX)
+            let y = mouse.y + CGFloat(config.cursorOffsetY)
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        } else if let x = config.x, let y = config.y {
             window.setFrameOrigin(NSPoint(x: x, y: y))
         } else {
             window.center()
@@ -166,6 +171,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         webView.navigationDelegate = self
         if config.transparent {
             webView.underPageBackgroundColor = .clear
+            webView.setValue(false, forKey: "drawsBackground")
         }
         window.contentView?.addSubview(webView)
 
