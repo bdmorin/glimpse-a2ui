@@ -27,6 +27,10 @@ struct Config {
     var transparent: Bool = false
     var x: Int? = nil
     var y: Int? = nil
+    var followCursor: Bool = false
+    var cursorOffsetX: Int = 20
+    var cursorOffsetY: Int = -20
+    var clickThrough: Bool = false
 }
 
 func parseArgs() -> Config {
@@ -56,6 +60,16 @@ func parseArgs() -> Config {
         case "--y":
             i += 1
             if i < args.count, let v = Int(args[i]) { config.y = v }
+        case "--follow-cursor":
+            config.followCursor = true
+        case "--cursor-offset-x":
+            i += 1
+            if i < args.count, let v = Int(args[i]) { config.cursorOffsetX = v }
+        case "--cursor-offset-y":
+            i += 1
+            if i < args.count, let v = Int(args[i]) { config.cursorOffsetY = v }
+        case "--click-through":
+            config.clickThrough = true
         default:
             break
         }
@@ -73,6 +87,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     var webView: WKWebView!
     let config: Config
 
+    // Mouse monitor references for follow-cursor mode
+    var globalMouseMonitor: Any?
+    var localMouseMonitor: Any?
+
     nonisolated init(config: Config) {
         self.config = config
     }
@@ -80,6 +98,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupWindow()
         setupWebView()
+        if config.followCursor {
+            startFollowingCursor()
+        }
         startStdinReader()
     }
 
@@ -100,8 +121,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         if config.frameless {
             window.isMovableByWindowBackground = true
         }
-        if config.floating {
+        if config.floating || config.followCursor {
             window.level = .floating
+        }
+        if config.clickThrough {
+            window.ignoresMouseEvents = true
         }
         if config.transparent {
             window.isOpaque = false
@@ -147,6 +171,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
 
         // Load blank page so didFinish fires and we emit "ready"
         webView.loadHTMLString("<html><body></body></html>", baseURL: nil)
+    }
+
+    // MARK: - Follow Cursor
+
+    func startFollowingCursor() {
+        guard globalMouseMonitor == nil else { return }
+        window.level = .floating
+        let moveHandler: (NSEvent) -> Void = { [weak self] _ in
+            guard let self else { return }
+            let mouse = NSEvent.mouseLocation
+            let x = mouse.x + CGFloat(self.config.cursorOffsetX)
+            let y = mouse.y + CGFloat(self.config.cursorOffsetY)
+            self.window.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged],
+            handler: moveHandler
+        )
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] event in
+            guard let self else { return event }
+            let mouse = NSEvent.mouseLocation
+            let x = mouse.x + CGFloat(self.config.cursorOffsetX)
+            let y = mouse.y + CGFloat(self.config.cursorOffsetY)
+            self.window.setFrameOrigin(NSPoint(x: x, y: y))
+            return event
+        }
+    }
+
+    func stopFollowingCursor() {
+        if let monitor = globalMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMouseMonitor = nil
+        }
+        if let monitor = localMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMouseMonitor = nil
+        }
     }
 
     // MARK: - Stdin Reader
@@ -197,6 +258,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 return
             }
             webView.evaluateJavaScript(js, completionHandler: nil)
+        case "follow-cursor":
+            let enabled = json["enabled"] as? Bool ?? true
+            if enabled {
+                startFollowingCursor()
+            } else {
+                stopFollowingCursor()
+            }
         case "close":
             closeAndExit()
         default:
