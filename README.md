@@ -20,6 +20,14 @@ npm install glimpseui
 
 `npm install` automatically compiles the Swift binary via a `postinstall` hook (~2 seconds). See [Compile on Install](#compile-on-install) for details.
 
+### Pi Agent Package
+
+```bash
+pi install npm:glimpseui
+```
+
+Installs the Glimpse skill and companion extension for [pi](https://github.com/mariozechner/pi). The companion is a floating status pill that follows your cursor showing what your agents are doing in real-time. Toggle it with the `/companion` command.
+
 **Manual build:**
 ```bash
 npm run build
