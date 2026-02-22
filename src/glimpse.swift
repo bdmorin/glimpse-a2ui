@@ -82,6 +82,40 @@ func getSystemInfo() -> [String: Any] {
     ]
 }
 
+// MARK: - Cursor Anchor
+
+let safeZoneLeft: CGFloat = 24
+let safeZoneRight: CGFloat = 31
+let safeZoneUp: CGFloat = 19
+let safeZoneDown: CGFloat = 43
+
+func anchorPosition(mouse: NSPoint, windowSize: NSSize, anchor: String) -> NSPoint? {
+    let cx = mouse.x
+    let cy = mouse.y
+    let W = windowSize.width
+    let H = windowSize.height
+    let sL = safeZoneLeft
+    let sR = safeZoneRight
+    let sU = safeZoneUp
+    let sD = safeZoneDown
+    switch anchor {
+    case "top-left":
+        return NSPoint(x: cx - sL - W, y: cy + sU)
+    case "top-right":
+        return NSPoint(x: cx + sR, y: cy + sU)
+    case "right":
+        return NSPoint(x: cx + sR, y: cy - H / 2)
+    case "bottom-right":
+        return NSPoint(x: cx + sR, y: cy - sD - H)
+    case "bottom-left":
+        return NSPoint(x: cx - sL - W, y: cy - sD - H)
+    case "left":
+        return NSPoint(x: cx - sL - W, y: cy - H / 2)
+    default:
+        return nil
+    }
+}
+
 // MARK: - CLI Config
 
 struct Config {
@@ -98,6 +132,7 @@ struct Config {
     var cursorOffsetY: Int = -20
     var clickThrough: Bool = false
     var autoClose: Bool = false
+    var cursorAnchor: String? = nil
 }
 
 func parseArgs() -> Config {
@@ -139,6 +174,9 @@ func parseArgs() -> Config {
             config.clickThrough = true
         case "--auto-close":
             config.autoClose = true
+        case "--cursor-anchor":
+            i += 1
+            if i < args.count { config.cursorAnchor = args[i] }
         default:
             break
         }
