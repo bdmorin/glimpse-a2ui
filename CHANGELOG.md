@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.6
+
+Companion remembers your preference — disable it once and it stays off across sessions.
+
+- **Feature**: Persist companion enabled/disabled state to `~/.config/glimpse/settings.json`
+- **Improvement**: `/companion` toggle now saves immediately; new sessions respect the saved preference
+
 ## 0.3.5
 
 Hidden window prewarm mode — open a window invisibly, let the WebView load content in the background, then reveal it instantly with the `show` command. Useful for eliminating perceived latency in agents and tools that know they'll need a window soon.
