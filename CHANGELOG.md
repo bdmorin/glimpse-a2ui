@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.5.0
+
+### Cross-Platform Support
+
+Glimpse now runs on **macOS**, **Linux**, and **Windows**. The core protocol and Node.js API remain identical across platforms — write once, render everywhere.
+
+#### Linux — Rust + GTK4 + WebKitGTK
+
+Native Linux binary using Rust with GTK4 and WebKitGTK (webkit6). Supports the full Glimpse protocol including `follow-cursor` on Hyprland via its IPC socket. Other Wayland compositors and X11 do not yet support cursor tracking.
+
+Inspired by [@thomaspeklak](https://github.com/thomaspeklak)'s Linux PR ([#4](https://github.com/HazAT/glimpse/pull/4)).
+
+Requirements: Rust toolchain, GTK4, WebKitGTK 6.0, gtk4-layer-shell dev packages.
+
+#### Windows — .NET 8 + WebView2
+
+Native Windows host using .NET 8 and Microsoft Edge WebView2. Supports the full Glimpse protocol including `follow-cursor` with spring physics, transparent/frameless windows, and click-through.
+
+Inspired by [@Dwsy](https://github.com/Dwsy)'s Windows PR ([#3](https://github.com/HazAT/glimpse/pull/3)).
+
+Requirements: .NET 8 SDK, Microsoft Edge WebView2 Runtime.
+
+#### Platform Infrastructure
+
+- **Unified build system** — `scripts/build.mjs` handles macOS (swiftc), Linux (cargo), and Windows (dotnet publish). Platform-aware `postinstall` gracefully skips when toolchains are missing.
+- **Platform detection** — `resolveNativeHost()` in `glimpse.mjs` resolves the correct binary per platform. `GLIMPSE_BINARY_PATH` / `GLIMPSE_HOST_PATH` env vars override.
+- **Feature capability gating** — `supportsFollowCursor()` and `getFollowCursorSupport()` detect runtime support. `statusItem()` throws on non-macOS. `openLinks` is macOS-only. The companion extension gracefully disables on unsupported platforms.
+- **Cross-platform companion IPC** — Unix domain sockets on macOS/Linux, named pipes on Windows.
+- **Build commands** — `npm run build:macos`, `npm run build:linux`, `npm run build:windows`
+- **Platform test** — `npm run test:platform` validates host resolution and socket paths
+
 ## 0.4.0
 
 Two community contributions land in this release — thank you! 🎉

@@ -2,8 +2,9 @@ import { open } from '../src/glimpse.mjs';
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { unlinkSync } from 'node:fs';
+import { getCompanionSocketPath, usesNamedPipe } from './socket-path.mjs';
 
-const SOCK = '/tmp/pi-companion.sock';
+const SOCK = getCompanionSocketPath();
 
 // ── status config ─────────────────────────────────────────────────────────────
 
@@ -247,8 +248,10 @@ function pushRemove(id) {
 
 // ── socket server ─────────────────────────────────────────────────────────────
 
-// Clean up stale socket
-try { unlinkSync(SOCK); } catch {}
+// Clean up stale socket (not needed for Windows named pipes)
+if (!usesNamedPipe(SOCK)) {
+  try { unlinkSync(SOCK); } catch {}
+}
 
 const server = createServer(socket => {
   sockets.add(socket);
@@ -321,8 +324,10 @@ function cleanup() {
   if (cleanedUp) return;
   cleanedUp = true;
   server.close();
-  try { unlinkSync(SOCK); } catch {}
-  if (win) try { win.close(); } catch {};
+  if (!usesNamedPipe(SOCK)) {
+    try { unlinkSync(SOCK); } catch {}
+  }
+  if (win) try { win.close(); } catch {}
 }
 
 process.on('SIGTERM', () => { cleanup(); process.exit(0); });

@@ -1,12 +1,52 @@
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getFollowCursorSupport, supportsFollowCursor } from './follow-cursor-support.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BINARY = process.env.GLIMPSE_BINARY_PATH ?? join(__dirname, 'glimpse');
+
+function resolveNativeHost() {
+  const override = process.env.GLIMPSE_BINARY_PATH || process.env.GLIMPSE_HOST_PATH;
+  if (override) {
+    return {
+      path: isAbsolute(override) ? override : resolve(process.cwd(), override),
+      platform: 'override',
+      buildHint: `Using override: ${override}`,
+    };
+  }
+
+  switch (process.platform) {
+    case 'darwin':
+      return {
+        path: join(__dirname, 'glimpse'),
+        platform: 'darwin',
+        buildHint: "Run 'npm run build:macos' or 'swiftc -O src/glimpse.swift -o src/glimpse'",
+      };
+    case 'linux':
+      return {
+        path: join(__dirname, 'glimpse'),
+        platform: 'linux',
+        buildHint: "Run 'npm run build:linux' (requires Rust toolchain and GTK4/WebKitGTK dev packages)",
+      };
+    case 'win32':
+      return {
+        path: normalize(join(__dirname, '..', 'native', 'windows', 'bin', 'glimpse.exe')),
+        platform: 'win32',
+        buildHint: "Run 'npm run build:windows' (requires .NET 8 SDK and WebView2 Runtime)",
+      };
+    default:
+      throw new Error(`Unsupported platform: ${process.platform}. Glimpse supports macOS, Linux, and Windows.`);
+  }
+}
+
+export function getNativeHostInfo() {
+  return resolveNativeHost();
+}
+
+export { getFollowCursorSupport, supportsFollowCursor };
 
 class GlimpseWindow extends EventEmitter {
   #proc;
@@ -19,7 +59,7 @@ class GlimpseWindow extends EventEmitter {
     this.#proc = proc;
     this.#pendingHTML = initialHTML;
 
-    proc.stdin.on('error', () => {}); // Swallow EPIPE if Swift exits first
+    proc.stdin.on('error', () => {}); // Swallow EPIPE if native exits first
 
     const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
 
@@ -37,11 +77,9 @@ class GlimpseWindow extends EventEmitter {
           const info = { screen: msg.screen, screens: msg.screens, appearance: msg.appearance, cursor: msg.cursor, cursorTip: msg.cursorTip ?? null };
           this.#info = info;
           if (this.#pendingHTML) {
-            // First ready = blank page loaded. Send the queued HTML.
             this.setHTML(this.#pendingHTML);
             this.#pendingHTML = null;
           } else {
-            // Subsequent ready = user HTML loaded. Notify caller.
             this.emit('ready', info);
           }
           break;
@@ -118,6 +156,11 @@ class GlimpseWindow extends EventEmitter {
   }
 
   followCursor(enabled, anchor, mode) {
+    if (enabled && !supportsFollowCursor()) {
+      const { reason } = getFollowCursorSupport();
+      process.emitWarning(`followCursor disabled: ${reason}`, { code: 'GLIMPSE_FOLLOW_CURSOR_UNSUPPORTED' });
+      return;
+    }
     const msg = { type: 'follow-cursor', enabled };
     if (anchor !== undefined) msg.anchor = anchor;
     if (mode !== undefined) msg.mode = mode;
@@ -126,15 +169,23 @@ class GlimpseWindow extends EventEmitter {
 }
 
 function ensureBinary() {
-  if (!existsSync(BINARY)) {
+  const host = resolveNativeHost();
+  if (!existsSync(host.path)) {
+    const skippedBuildPath = join(__dirname, '..', '.glimpse-build-skipped');
+    const skippedReason = existsSync(skippedBuildPath)
+      ? readFileSync(skippedBuildPath, 'utf8').trim()
+      : null;
     throw new Error(
-      "Glimpse binary not found. Run 'npm run build' or 'swiftc src/glimpse.swift -o src/glimpse'"
+      skippedReason
+        ? `Glimpse host not found at '${host.path}'. ${skippedReason}`
+        : `Glimpse host not found at '${host.path}'. ${host.buildHint}`
     );
   }
+  return host;
 }
 
 export function open(html, options = {}) {
-  ensureBinary();
+  const host = ensureBinary();
 
   const args = [];
   if (options.width != null)  args.push('--width',  String(options.width));
@@ -145,11 +196,20 @@ export function open(html, options = {}) {
   if (options.floating)     args.push('--floating');
   if (options.transparent)  args.push('--transparent');
   if (options.clickThrough) args.push('--click-through');
-  if (options.followCursor) args.push('--follow-cursor');
-  if (options.hidden)      args.push('--hidden');
-  if (options.autoClose)   args.push('--auto-close');
-  if (options.openLinks)   args.push('--open-links');
-  if (options.openLinksApp) args.push('--open-links-app', options.openLinksApp);
+  if (options.hidden)       args.push('--hidden');
+  if (options.autoClose)    args.push('--auto-close');
+
+  // macOS-only options
+  if (options.openLinks && host.platform !== 'win32')  args.push('--open-links');
+  if (options.openLinksApp && host.platform !== 'win32') args.push('--open-links-app', options.openLinksApp);
+
+  // Follow cursor — gated by capability
+  if (options.followCursor && supportsFollowCursor()) {
+    args.push('--follow-cursor');
+  } else if (options.followCursor) {
+    const { reason } = getFollowCursorSupport();
+    process.emitWarning(`followCursor disabled: ${reason}`, { code: 'GLIMPSE_FOLLOW_CURSOR_UNSUPPORTED' });
+  }
 
   if (options.x != null) args.push('--x', String(options.x));
   if (options.y != null) args.push('--y', String(options.y));
@@ -159,7 +219,10 @@ export function open(html, options = {}) {
   if (options.cursorAnchor) args.push('--cursor-anchor', options.cursorAnchor);
   if (options.followMode != null) args.push('--follow-mode', options.followMode);
 
-  const proc = spawn(BINARY, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  const proc = spawn(host.path, args, {
+    stdio: ['pipe', 'pipe', 'inherit'],
+    windowsHide: process.platform === 'win32',
+  });
   return new GlimpseWindow(proc, html);
 }
 
@@ -174,14 +237,18 @@ class GlimpseStatusItem extends GlimpseWindow {
 }
 
 export function statusItem(html, options = {}) {
-  ensureBinary();
+  const host = ensureBinary();
+
+  if (host.platform !== 'darwin') {
+    throw new Error(`statusItem() is only supported on macOS (current platform: ${host.platform})`);
+  }
 
   const args = ['--status-item'];
   if (options.width != null)  args.push('--width',  String(options.width));
   if (options.height != null) args.push('--height', String(options.height));
   if (options.title != null)  args.push('--title',  options.title);
 
-  const proc = spawn(BINARY, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  const proc = spawn(host.path, args, { stdio: ['pipe', 'pipe', 'inherit'] });
   return new GlimpseStatusItem(proc, html);
 }
 
@@ -192,7 +259,11 @@ export function prompt(html, options = {}) {
 
     const timer = options.timeout
       ? setTimeout(() => {
-          if (!resolved) { resolved = true; win.close(); reject(new Error('Prompt timed out')); }
+          if (!resolved) {
+            resolved = true;
+            win.close();
+            reject(new Error('Prompt timed out'));
+          }
         }, options.timeout)
       : null;
 
@@ -208,7 +279,7 @@ export function prompt(html, options = {}) {
       if (timer) clearTimeout(timer);
       if (!resolved) {
         resolved = true;
-        resolve(null); // User closed window without sending a message
+        resolve(null);
       }
     });
 

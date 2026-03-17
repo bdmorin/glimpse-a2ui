@@ -1,8 +1,21 @@
 # Compiled binary (do not ignore src/glimpse.swift or src/glimpse.mjs)
 src/glimpse
 
+# Linux build output
+src/linux/target/
+
+# Windows build output
+native/windows/bin/
+native/windows/obj/
+
+# Build markers
+.glimpse-build-skipped
+
 # Dependencies
 node_modules/
+
+# Local dev
+.pi/
 
 # macOS
 .DS_Store
