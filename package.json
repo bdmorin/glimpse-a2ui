@@ -24,6 +24,7 @@
   "files": [
     "src/glimpse.swift",
     "src/glimpse.mjs",
+    "src/chromium-backend.mjs",
     "src/follow-cursor-support.mjs",
     "src/linux/",
     "bin/glimpse.mjs",
