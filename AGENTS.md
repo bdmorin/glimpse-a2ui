@@ -120,7 +120,8 @@ skills/glimpse/SKILL.md — Agent skill (patterns, examples, creative ideas)
 CHANGELOG.md        — Release notes
 AGENTS.md           — This file (project conventions for agents)
 .gitignore          — Excludes compiled binary, node_modules
-pi-extension/               — Pi companion extension (cursor-following agent status)
-pi-extension/index.ts       — Extension entry point (/companion command, event tracking)
-pi-extension/companion.mjs  — Standalone companion process (Glimpse window, state polling)
+examples/companion/          — Example: Pi companion extension (cursor-following agent status)
+examples/companion/index.ts  — Extension entry point (/companion command, event tracking)
+examples/companion/companion.mjs — Standalone companion process (Glimpse window, state polling)
+examples/companion/socket-path.mjs — Cross-platform socket path helper
 ```

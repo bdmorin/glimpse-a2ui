@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { getCompanionSocketPath } from "./socket-path.mjs";
-import { getFollowCursorSupport } from "../src/glimpse.mjs";
+import { getFollowCursorSupport } from "../../src/glimpse.mjs";
 
 const SOCK = getCompanionSocketPath();
 const SESSION_ID = randomUUID().slice(0, 8);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { getNativeHostInfo } from '../src/glimpse.mjs';
-import { getCompanionSocketPath, usesNamedPipe } from '../pi-extension/socket-path.mjs';
+import { getCompanionSocketPath, usesNamedPipe } from '../examples/companion/socket-path.mjs';
 
 const host = getNativeHostInfo();
 const socketPath = getCompanionSocketPath();

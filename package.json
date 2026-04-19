@@ -33,17 +33,12 @@
     "NuGet.config",
     "scripts/build.mjs",
     "scripts/postinstall.mjs",
-    "pi-extension/index.ts",
-    "pi-extension/companion.mjs",
-    "pi-extension/socket-path.mjs",
+    "examples/companion/",
     "skills/glimpse/SKILL.md",
     "README.md",
     "CHANGELOG.md"
   ],
   "pi": {
-    "extensions": [
-      "./pi-extension/index.ts"
-    ],
     "skills": [
       "./skills"
     ]
