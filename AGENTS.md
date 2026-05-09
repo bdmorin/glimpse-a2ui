@@ -66,8 +66,10 @@ test/test.mjs               Smoke test: surfaceUpdate → render → synthetic
 scripts/build.mjs           swiftc invocation. `npm run build:macos`.
 scripts/postinstall.mjs     Compiles binary on install.
 knowledge/                  Canonical project knowledge. Read INDEX.md first.
-HANDOFF.md                  Pre-POC handoff. Historical; superseded by
-                            knowledge/20260509-130112.poc-retrospective....
+HANDOFF.md                  Forward-looking inventory of out-of-scope work
+                            (agent control surface, MCP wrapper, agent skill,
+                            upstream filings, productization). Read after
+                            knowledge/INDEX.md for "what's next."
 ```
 
 Upstream-residue directories were deleted in repo maintenance on 2026-05-09 (see `knowledge/AUDIT_LOG.md`). Recover from `git log` if needed.

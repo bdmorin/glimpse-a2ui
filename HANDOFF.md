@@ -1,84 +1,167 @@
-# HANDOFF — glimpse-a2ui
+# a2glimpse Handoff — End of Polish & Hardening Arc
 
-**Date:** 2026-05-09
-**State:** Pre-implementation. Repo is upstream HazAT/glimpse verbatim plus a `knowledge/` folder. **No fork code changes yet.**
+**Date:** 2026-05-09 (replaces the pre-POC handoff that lived at this path through the polish/hardening arc).
 
-## What This Project Is
+If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is a forward-looking inventory of what remains, not the orientation.
 
-Forking `HazAT/glimpse` into an **A2UI-native client appliance**: a single native binary that accepts spec-compliant A2UI JSONL on stdin, renders trusted declarative components in a native WebView, and emits user actions back on stdout. Provider-neutral, MCP-pairable, no-Electron.
+## Where We Are
 
-The thesis in one sentence: **glimpse is 90% of an A2UI client — delete `eval`, replace `html`, bundle a renderer.**
+The polish and hardening arc has shipped. The repo went from "POC plumbing proven" to "deliberate appliance with hardened trust boundaries, comprehensive visual regression, polished components across the supported v0.8 surface, system-mode-aware window chrome, and a documented agent-dispatch protocol."
 
-## Read These First (in order)
+`v0.8.1-phase3` tag marks the Phase 1-4 milestone on `origin/main`. `v0.8.2-arc-complete` (forthcoming after the closing-arc agents merge) closes the arc.
 
-1. `knowledge/INDEX.md` — knowledge-folder map
-2. `knowledge/20260509-162039.a2ui-protocol-overview.knowledge.md` — what A2UI is (VERIFIED)
-3. `knowledge/20260509-162039.glimpse-upstream-snapshot.knowledge.md` — the pre-fork baseline (VERIFIED)
-4. `knowledge/20260509-162039.fork-architecture.analysis.md` — design decisions (ASSESSMENT, not yet built)
-5. `knowledge/20260509-162039.external-references.reference.md` — authoritative URLs
-6. `AGENTS.md` — upstream glimpse project conventions
+## What's Outstanding (Inventory)
 
-## Local Reference Clones
+### A. Agent-Facing Surface (the next-iteration cluster)
 
-Both cloned to `~/src/github.com/...` for offline reading:
+The cluster the original plan deliberately punted, still the right next bet. All four items reinforce each other; do them in this order.
 
-| Path | What |
-|------|------|
-| `/Users/brahn/src/github.com/bdmorin/glimpse-a2ui` | **This repo** (the fork) |
-| `/Users/brahn/src/github.com/google/A2UI` | A2UI spec + reference renderers (Apache-2.0, v0.8) |
+#### A1. Agent Control Surface — supported component subset
 
-Both should be open in a fresh session. `google/A2UI` is the source of truth for the protocol — read its `specification/` and `renderers/` directories before writing fork code.
+**What:** Define the small set of A2UI v0.8 patterns coding agents should use, with worked examples. Confirm dialog, choice prompt, multi-choice, free-text capture, status surface, diff review, command approval. The current visual harness fixtures already cover most of these; this slice is about codifying them as *guidance* with a fixture-per-pattern naming convention agents can pattern-match on.
 
-## First-30-Minutes Checklist for the Implementation Session
+**Why first:** The MCP server wrapper (A2) and the agent skill (A3) both need a stable subset to expose / teach. Without it, both downstream pieces drift.
 
-These are open questions flagged in `fork-architecture.analysis.md` as UNCERTAIN. Resolve them with the local A2UI clone before any code changes:
+**Effort estimate:** 1 session if scoped tight (just the catalog), 2 if also adding fixtures for missing patterns.
 
-- [ ] Read `~/src/github.com/google/A2UI/specification/` — confirm the **exact v0.8 message-type names and field schemas** (the overview file uses `surfaceUpdate` / `dataModelUpdate` provisionally; verify).
-- [ ] Read `~/src/github.com/google/A2UI/renderers/` — identify the **Lit web renderer entry point** and its **dispatch API** (`window.a2ui.dispatch(...)` is provisional; verify).
-- [ ] Determine if the Lit renderer can run **fully offline** from a custom URL scheme (no CDN fetches, no network globals). Critical — glimpse's existing `glimpse-resource://` style scheme depends on this.
-- [ ] Check `~/src/github.com/google/A2UI/eval/` — is it reusable as a v0.8 compliance test harness, or do we hand-roll?
-- [ ] Inspect Lit renderer **bundle size** when minified — informs whether we embed in-binary or ship alongside.
+**Pre-conditions:** None — could ship today on top of current Phase 1-4 work.
 
-Write findings into a new file: `knowledge/YYYYMMDD-HHMMSS.a2ui-spec-grounding.knowledge.md`.
+#### A2. MCP Server Wrapper
 
-## Scrappy MVP Path (from fork-architecture.analysis.md)
+**What:** A long-lived process that holds `a2glimpse` alive across MCP tool calls and exposes operations:
+- `a2ui.surface_update` (forward an A2UI v0.8 message)
+- `a2ui.data_model_update`
+- `a2ui.begin_rendering`
+- `a2ui.delete_surface`
+- `a2ui.await_action` (blocking; returns the next userAction or times out)
+- `a2ui.close`
+- `a2ui.get_info`
 
-1. Mac-only. Defer Linux/Windows.
-2. Vendor the Lit renderer from `google/A2UI/renderers/`.
-3. Wire **one** A2UI surface end-to-end: `surfaceUpdate` → render Button → user click → action JSONL on stdout. Just one component before adding more.
-4. Wrap binary in an MCP server (~150 lines TS) that holds it alive across tool calls.
-5. Test from Claude Code: "show me a confirm dialog with three options" round-trips.
+**Why this shape:** MCP tool calls are stateless; agent-loop UX requires a long-lived window. The wrapper bridges that. Action correlation (mapping `await_action` calls to incoming `userAction` events) lives here, not in the binary.
 
-Estimate to step 5: a weekend.
+**Trust-boundary stance:** The wrapper IS the trust boundary for MCP-driven flows. It must validate every A2UI message against the v0.8 schema before forwarding to `a2glimpse`'s stdin. Reject `html` / `file` / `eval` shapes loudly.
 
-## What Stays vs. What Changes (summary — full version in fork-architecture.analysis.md)
+**Effort estimate:** 2-3 sessions. ~150-300 lines of TypeScript per the original plan, plus tests, plus an MCP manifest, plus a configuration story for which a2glimpse binary to use.
 
-**Keep:** native binary model, JSONL stdio framing, lifecycle events, custom URL scheme, single-file Swift, zero-dep philosophy, compile-on-install.
+**Pre-conditions:** A1 (so the MCP tool surface mirrors the documented patterns).
 
-**Swap:** `{type:"html", ...}` → A2UI message types. `{type:"eval", ...}` → removed from public surface (optional `--unsafe-eval` dev flag). `{type:"message", data:...}` → A2UI `action` events.
+#### A3. Agent Skill
 
-**Add:** bundled A2UI ref renderer, multi-surface support, v0.8 compliance suite.
+**What:** A Claude Code skill that teaches coding agents:
+- When to use a2glimpse (criteria: long-lived UI, multi-step interaction, user choice required, etc.)
+- How to phrase the MCP tool calls
+- How to interpret returned userActions
+- How to clean up surfaces
 
-## Non-Goals (For Now)
+**Effort estimate:** 1 session once A2 ships. The skill is mostly documentation and examples; the heavy lifting is in the wrapper.
 
-- Linux/Windows parity. Mac-first.
-- A2UI v0.9. Pin to v0.8.
-- Upstreaming to HazAT. File an issue eventually if Mac MVP works; not blocking.
-- Replacing the existing `--unsafe-eval` path entirely (kept for renderer dev/debug).
+**Pre-conditions:** A1 + A2.
 
-## Open Architectural Decisions
+### B. Vendored Renderer — Upstream Pathway
 
-- **Binary name:** `glimpse` (rename retained), `a2g`, or `a2glimpse`? Decide at first commit. Leaning `glimpse` — boring + obvious.
-- **Renderer delivery:** baked into binary as resource, or shipped as sibling asset? Depends on bundle size finding above.
-- **Multi-surface UX:** stacked panels in one window vs. tabs vs. multiple windows? Defer until we read the renderer source.
+#### B1. File renderer-bug findings upstream to `google/A2UI`
 
-## What Would Make This Project Wrong
+Two confirmed bugs identified during Phase 3, currently worked around in the wrapper but worth filing:
 
-If A2UI v0.8's message format is materially different from the streaming-JSON-with-component-IDs description we relied on, parts of `fork-architecture.analysis.md` need revision before any code lands. **Verify against the local spec clone first** — that's why the first-30-minutes checklist exists.
+1. **Tabs theme-gap.** `Tabs.render()` calls `classMap(this.theme.components.Tabs.element)` but `defaultTheme.components.Tabs` lacks an `element` key. lit-html `classMap` does `Object.keys(undefined)` → throws → shadow-DOM commit aborts → component renders blank. Workaround in `src/a2glimpse-host.html` is a `customElements.whenDefined('a2ui-tabs').then(...)` prototype patch on `update`. Documented in `knowledge/20260509-154525.vendored-renderer-pathologies.knowledge.md`.
 
-## Don't Do This
+2. **MultipleChoice schema/element mismatch.** A2UI v0.8 spec accepts `MultipleChoice.type`; Lit element reads `.variant`. Field set via spec is silently dropped. No wrapper-side workaround shipped — documented as DEFERRED.
 
-- Do not start writing Swift before resolving the first-30-minutes checklist. Premature implementation against an assumed schema = rework.
-- Do not delete `src/glimpse.swift`'s structure — single-file discipline is upstream convention and worth preserving even after diverging.
-- Do not add Linux/Windows changes in the same commits as the A2UI refactor. Mac-only first; cross-platform is a separate later concern.
-- Do not paper over `eval` removal with a wrapper that just translates A2UI → eval underneath. That defeats the security thesis.
+3. **MultipleChoice empty-array selections crash.** `selections.literalArray:[]` triggers `getCurrentSelections()` to call `processor.getData(comp, undefined, ...)` and throw. Worked around at the fixture level (use `selections.path:"<...>"` form).
+
+**Effort estimate:** 1 session. Each is a clear repro + minimal patch suggestion. Filing process is GitHub-issue-shaped.
+
+**Pre-conditions:** None.
+
+#### B2. Renderer bundle freshness
+
+When `google/A2UI` ships v0.8.x updates, we should re-vendor the renderer. Process is undocumented; capture it as a runbook the first time we do it:
+
+- Where the source bundle lives (likely `google/A2UI/renderers/lit/`)
+- Build command (`npm run build` in that subtree?)
+- Verification: re-run our visual harness; expect the renderer-content-hash to change; investigate any visual regressions before re-blessing.
+- Trust-boundary check: diff the new bundle for new `eval` / `unsafeHTML` / runtime fetch patterns.
+
+**Effort estimate:** First time, 2 sessions to characterize and document. Subsequent re-vendors should be ~1 session.
+
+### C. Productization
+
+#### C1. `.app` packaging, signing, notarization
+
+Documented as out of scope for the POC. Now that the appliance exists and is polished, this is the path to "Brian double-clicks an icon and it just works."
+
+**Effort estimate:** 2-3 sessions, mostly fighting Apple's signing tooling.
+
+**Pre-conditions:** None, but doing this BEFORE the agent skill (A3) means the skill can recommend a binary install path (e.g. Homebrew tap, signed installer) instead of `npm install`.
+
+#### C2. Multi-surface support
+
+Currently single-surface only (deliberate POC scope). A2UI's native concept supports N surfaces per process; the renderer Lit components can render multiple `<a2ui-surface>` elements. Adding multi-surface means:
+
+- Removing the single-surface enforcement in `src/a2glimpse.swift`
+- Tabbed or stacked surface presentation in the host page
+- Action routing by `surfaceId`
+- A close-individual-surface command on the public stdin
+
+**Effort estimate:** 2 sessions.
+
+**Pre-conditions:** Probably worth deferring until A1-A3 ship; coding-agent UX rarely needs multiple concurrent surfaces in one window.
+
+### D. Polish Remainders (Non-Blocking)
+
+Cosmetic / nice-to-have items that aren't load-bearing for the appliance shape:
+
+- **Test-mode visible chrome.** Test-mode windows keep standard chrome (titlebar with title text) by design — geometry is tuned to 480×352 with the harness cropping y=0..32 for pixel-diff. If this ever feels wrong, the path to unified-titlebar in test-mode is: drop the `!config.testMode` gate, set window size to 480×320 (no titlebar reservation), update `cropTitlebar` to no-op (or remove it), re-bless all goldens. ~30-45 min if it matters.
+- **Dark mode `additionalStyles` color review.** Phase 4b ships dark-mode CSS-token-driven theming, but `defaultTheme.additionalStyles` (Button blue background, Card outline color, etc.) are baked into the IIFE and don't theme-swap. Either route those colors through CSS variables (wrapper edit, then reference `var(--name)` from the `additionalStyles` strings) or live with the slight light-bias in dark mode.
+- **Visual harness production-mode goldens.** Today the harness runs in `--test-mode` only. A separate suite of *production-mode* fixtures could capture the unified-titlebar treatment + dark-mode rendering. Out of scope for now; consider when the agent skill needs to demo what a2glimpse looks like in real use.
+- **Slider label rendering.** Phase 3 textfield-slider noted that the renderer's `<label>` doesn't appear above the slider track in captures. Cosmetic. Documented in that slice's devlog.
+
+### E. Dispatch-Runtime Improvements (Self-Awareness)
+
+Items captured during this session that would improve future orchestrator runs:
+
+#### E1. `Agent({isolation: "worktree"})` reliability
+
+Two failure modes observed (documented in `knowledge/20260509-152436.worktree-isolation-verification.knowledge.md`):
+
+- **Mode A** (stale-ref worktree): runtime caches `main` HEAD at session start; worktrees fork from that cache, not current HEAD. Agents handle this with `git rebase main` as their second action; the procedure doc requires it. Worth filing as a runtime improvement request.
+- **Mode B** (worktree creation silently fails): under high parallel concurrency (~7 simultaneous), some `git worktree add` calls fail; the runtime falls back to running the agent in the parent's CWD without surfacing an error. The HARD_FAIL convention catches this from inside the agent. Also worth filing.
+
+These are runtime concerns, not code in *this* repo. If we ever talk to whoever maintains the `Agent` tool, surface both.
+
+#### E2. snap-happy / mcporter parallelism
+
+Multiple agents running the visual harness simultaneously can race over windowId picking. Phase 3 had agents reporting "process exited before ready" / "mcporter timeout" cluster events. Mitigations so far: cap-1 retry on size anomaly, agents serialize their own `--update` runs. A more principled fix would serialize `mcporter call snap-happy.*` system-wide via a file lock — out of scope for this iteration.
+
+#### E3. `defaultTheme.additionalStyles` sub-element keys
+
+Modal retry showed `additionalStyles.Modal` reaches an *inner* shadow element (the `<section class="...Modal.element">`), not just the outer wrapper. The vendored-renderer-pathologies knowledge entry should be updated with this nuance: "additionalStyles can target sub-elements via key naming when the renderer's shadow CSS uses class names like `${theme.Component.element}`." Worth a one-line addendum after the closing arc lands.
+
+## Recommended Order For Next Session
+
+1. **A1 — Agent Control Surface subset.** Foundation for A2 + A3. ~1 session.
+2. **A2 — MCP Server Wrapper.** ~2-3 sessions.
+3. **A3 — Agent Skill.** ~1 session.
+4. **B1 — Upstream filings.** ~1 session, can run in parallel with A2.
+5. **C1 — `.app` packaging.** Whenever convenient. ~2-3 sessions.
+
+## Out-of-Scope For The Foreseeable Future
+
+These are deliberately deprioritized:
+
+- **Linux / Windows backends.** The hardfork dropped Linux/Windows; recovery is one `git log --follow` away. Unless cross-platform demand emerges, don't.
+- **v0.9 / v0.10 spec pivot.** v0.8 is closed (no longer evolving) but stable. Pivoting churns the renderer bundle and re-baselines the visual harness wholesale. Wait for a real reason.
+- **Cross-host visual parity.** The visual harness is host-targeted to Brian's machine. Goldens are not portable. If a second developer joins, they should re-bless on their host once and accept that.
+
+## How To Read This Repo Cold
+
+1. `AGENTS.md` — orientation, conventions, wire protocol summary.
+2. `knowledge/INDEX.md` — knowledge catalog with reading order.
+3. `knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md` — if you'll be dispatching sub-agents.
+4. `knowledge/DEV_LOG.md` — recent entries first; understand current state.
+5. `knowledge/AUDIT_LOG.md` — who did what, where, with what outcome.
+6. `HANDOFF.md` (this file) — what's next.
+
+Welcome back. The plumbing is solid, the polish is real, the documentation is durable. Take your time on the next move.
+
+— End of session 2026-05-09
