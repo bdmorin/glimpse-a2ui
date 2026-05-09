@@ -24,3 +24,8 @@ node_modules/
 .DS_Store
 review.md
 .pet-runs/
+
+# Visual harness transient artifacts (goldens are tracked; these are not)
+test/__snapshots__/*/diffs/
+test/__snapshots__/*/*.actual.png
+test/__snapshots__/.tmp/
