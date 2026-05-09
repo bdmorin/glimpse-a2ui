@@ -14,7 +14,9 @@
     "build": "node scripts/build.mjs",
     "build:macos": "node scripts/build.mjs darwin",
     "postinstall": "node scripts/postinstall.mjs",
-    "test": "node test/test.mjs"
+    "test": "node test/test.mjs",
+    "test:visual": "node test/visual.mjs",
+    "test:visual:update": "node test/visual.mjs --update"
   },
   "files": [
     "src/a2glimpse.swift",
