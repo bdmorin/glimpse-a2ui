@@ -28,8 +28,12 @@
     font-size: 14px;
     line-height: 1.45;
     background: #fbfcfd;
-    /* Material Design tokens consumed by the vendored renderer. Tuning these
-       cascades into shadow-DOM components without touching the IIFE. */
+    /* Material Design tokens consumed by the vendored renderer. CSS custom
+       properties pierce shadow-DOM boundaries via var() reference, so defining
+       them on body makes the renderer's vendored CSS (which references
+       --md-sys-color-* and --md-sys-elevation-*) resolve without touching the
+       IIFE. Without these, MultipleChoice/CheckBox/Card render transparent
+       and look invisible. */
     --md-sys-color-primary: #2563eb;
     --md-sys-color-on-primary: #ffffff;
     --md-sys-color-on-surface: #1f2328;
@@ -62,6 +66,11 @@
   a2ui-card {
     margin: 4px 0;
   }
+
+  /* Light-DOM host-level layout for MultipleChoice + CheckBox. The shadow-DOM
+     chrome is owned by the vendored renderer; we only touch the host element. */
+  a2ui-multiplechoice, a2ui-checkbox { display: block; margin-bottom: 12px; }
+  a2ui-multiplechoice:last-child, a2ui-checkbox:last-child { margin-bottom: 0; }
 
   /* Text usageHint typographic emphasis. The vendored renderer reflects
      `usageHint` to the `usage-hint` attribute (Lit @property reflect: true),
@@ -10738,6 +10747,14 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
       Button: { appearance: "none", border: "0", borderRadius: "8px", padding: "10px 14px", background: "#0a84ff", color: "white", font: "inherit", cursor: "pointer" },
       Card: { border: "1px solid #d0d7de", borderRadius: "8px", padding: "16px", background: "Canvas" },
       Text: { body: { margin: "0" }, h1: { margin: "0", fontSize: "24px" }, h2: { margin: "0", fontSize: "20px" }, h3: { margin: "0", fontSize: "18px" }, h4: { margin: "0" }, h5: { margin: "0" }, caption: { margin: "0", opacity: "0.75" } }
+      // NOTE: CheckBox additionalStyles deliberately omitted. The renderer's
+      // shadow CSS hard-codes `input { display: block; width: 100%; }`, which
+      // stretches the native <input> across the full section width and pushes
+      // the <label> off-axis. additionalStyles is applied to the <section>
+      // wrapper only — there's no host-side hook to override the input rule
+      // that lives inside the component's shadow DOM. Fixing this cleanly
+      // would require a renderer change (or ::part exposure). Deferred —
+      // see knowledge/log/<this-slice>.devlog.md for details.
     }
   };
   function resolveActionValue(value, sourceComponent, dataContextPath, surfaceId, processor) {
