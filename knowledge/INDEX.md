@@ -6,6 +6,7 @@ Durable reference material for this fork. Read these before touching code in a n
 
 - [DEV_LOG.md](DEV_LOG.md) — session-by-session rationale, alternatives weighed, deliberate non-actions. Read recent entries to understand current state. Append when finishing meaningful work; never edit past entries.
 - [AUDIT_LOG.md](AUDIT_LOG.md) — who/what/where ledger of agent dispatches, worktree work, blockers, deferrals. Sister to DEV_LOG; AUDIT_LOG owns lineage, DEV_LOG owns rationale.
+- [log/](log/) — per-slice DEV_LOG / AUDIT_LOG fragments written by parallel worktree agents. Aggregated into DEV_LOG.md / AUDIT_LOG.md at merge time. Convention: [parallel-agent log fragments](20260509-145843.parallel-agent-log-fragments.knowledge.md).
 
 ## Active Plan
 
