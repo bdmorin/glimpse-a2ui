@@ -821,3 +821,523 @@ POC retro flagged MultipleChoice as "renders thinly... options not visible." Pha
 Stayed under the >1-session bail. Diagnosis, MD3-token fix, and CheckBox fixture/shim landed cleanly inside the time budget. Stopped at the CheckBox label-layout problem after two failed `additionalStyles` attempts — that's renderer-internal, not wrapper-CSS-fixable.
 
 ---
+
+## 2026-05-09 — Closing arc (4 parallel agents): dark mode, Material Symbols, markdown engine, raw-stdin buffer
+
+The four DEFERRED / open-ended items remaining after the Phase 1-4 arc, dispatched in parallel and merged together. Per per-slice fragment convention; original fragments preserved under knowledge/log/.
+
+---
+
+
+### 20260509-161953 — usagehint-markdown-engine (devlog fragment)
+
+Fragment: `knowledge/log/20260509-161953.usagehint-markdown-engine.devlog.md`
+
+
+# usageHint markdown engine — SHIPPED
+
+## Author
+Claude Opus 4.7 (1M)
+
+## Context
+
+Prior dispatch (`20260509-150258.phase3-usagehint-markdown`) DEFERRED with a
+careful security analysis. Two stated blockers:
+
+1. The `markdown2` Lit context symbol is private to the IIFE; no external
+   provider can subscribe without editing the vendored bundle.
+2. The "tiny regex shim" path requires registering via that same private
+   context, AND the trust analysis for emitting HTML through `unsafeHTML`
+   is non-trivial.
+
+Both blockers were correct *under the assumption that the only intervention
+points were the context provider or the IIFE*. The directive's other path
+— `await import("@a2ui/markdown-it")` — was correctly identified as the
+upstream-blessed door, but the prior agent characterized it as requiring
+either a multi-file artifact or an IIFE patch to redirect the import.
+
+That characterization was the missing piece. **ES module import maps**
+(declared via `<script type="importmap">`) intercept bare-specifier
+resolution for ALL imports in the document, including dynamic
+`import("…")` calls from classic `<script>` tags. Safari/WKWebView 16.4+
+support this. So we can wire `@a2ui/markdown-it` to point at our own
+inlined module without touching the IIFE.
+
+## Did
+
+1. **Wrote `src/markdown/a2glimpse-markdown.mjs`** — a 130-line
+   allowlist-based markdown engine. Strategy: HTML-escape everything
+   first, then re-introduce a fixed set of structural tags by pattern.
+   Output allowlist: `h1..h6 p strong em code pre ul ol li a br`.
+   Link `href` allowlist: `http://`, `https://`, `mailto:`, relative.
+
+2. **Wrote `scripts/inline-markdown-engine.mjs`** — small build helper
+   that base64-encodes the engine source and splices it into
+   `src/a2glimpse-host.html` between BEGIN/END markers as a `<script
+   type="importmap">` mapping `@a2ui/markdown-it` to a `data:` URL.
+   Placed in `<head>` so the import map registers before the IIFE runs.
+
+3. **Wrote `test/markdown-engine.mjs`** — 29 unit tests focused on the
+   trust boundary. Every classic XSS vector (`<script>`, `<img onerror>`,
+   `<iframe>`, `<style>`, `<svg/onload>`, `javascript:` / `data:` /
+   `vbscript:` URLs, attribute-escape via `"`-injection in headings,
+   class-name injection via `tagClassMap`) is verified to either be
+   escaped or rejected.
+
+4. **Updated host HTML CSS comment** — the old "markdown is DEFERRED"
+   comment block was stale; replaced with a pointer to the import map +
+   engine source.
+
+5. **Ran `npm test`** (smoke) → green; **`npm run test:visual:update`**
+   captured 8 new goldens at the new renderer hash `ef0783e8cfe7`. The
+   `card-text` golden visually confirms `### Card Title` now renders
+   without the literal `### ` prefix.
+
+## Findings (intelligence-discipline format)
+
+### Why the prior agent's blocker was an over-conservative reading (LIKELY)
+
+The prior devlog said:
+
+> Bundle `@a2ui/markdown-it` so the dynamic import resolves… (a)
+> probably requires touching the vendored IIFE to redirect the
+> `import()` call — which is forbidden.
+
+This conflated *bundling the file* with *resolving the specifier*. ESM
+import maps are exactly the standard mechanism for resolving bare
+specifiers without touching importer code. The "redirect the import
+call" framing only applies if you don't have an import map; with one,
+the importer's code is unchanged and the resolver picks the mapped URL.
+
+### Why this is the same trust boundary the renderer's authors implicitly accepted (VERIFIED)
+
+The vendored `MarkdownDirective.render` does
+`o12(rendered)` — `unsafeHTML(rendered)` — on whatever `renderMarkdown`
+returns. Upstream Google ships `@a2ui/markdown-it` as the trusted
+producer of that string. Our engine occupies the same slot, with the
+same contract: produce safe HTML. We trust ourselves the same way the
+upstream renderer trusts `@a2ui/markdown-it`.
+
+### Trust-boundary threat analysis (VERIFIED via test/markdown-engine.mjs)
+
+Concrete inputs the engine handles correctly (inputs → relevant output
+substring; full assertions in `test/markdown-engine.mjs`):
+
+| Input | Behaviour |
+|---|---|
+| `<script>alert(1)</script>` | escaped to `&lt;script&gt;…`; no `<script` tag emitted |
+| `<img src=x onerror=alert(1)>` | escaped to `&lt;img …&gt;`; no `<img` tag emitted |
+| `<iframe src=evil></iframe>` | escaped; no `<iframe` tag emitted |
+| `<style>body{display:none}</style>` | escaped; no `<style` tag emitted |
+| `<svg/onload=alert(1)>` inside `*…*` | `<em>` rendered around escaped svg text; no `<svg` tag |
+| `[click](javascript:alert(1))` | URL rejected by scheme allowlist; rendered as literal text, no `<a>` |
+| `[click](data:text/html,…)` | URL rejected; no `<a>` |
+| `[click](vbscript:msgbox)` | URL rejected; no `<a>` |
+| `# Title" onclick="alert(1)` | quotes escaped to `&quot;` inside heading body; no attribute can form |
+| `tagClassMap: { ul: { 'evil"onclick=alert x': true } }` | class name fails allowlist regex `/^[A-Za-z0-9 _\-]+$/`, dropped |
+| URL with control char (`\x00`–`\x1f`) | rejected |
+
+Critical invariant: the engine HTML-escapes the **entire input** before
+any pattern matching. All subsequent regex transforms operate on the
+escaped string, so any HTML-shaped fragment in the input has already
+become inert text by the time we look for markdown patterns. The only
+way live HTML reaches the output is via the explicit allowlisted
+emitters (heading/list/etc), and those emitters never interpolate raw
+input into attributes — only `safeUrl()`-checked URLs go into
+`href="…"`, and only allowlist-passed class names go into `class="…"`.
+
+### What the engine does not currently support (LIKELY incomplete, intentionally narrow)
+
+- Setext headings (`Title\n=====`).
+- Reference links (`[text][ref]` + later `[ref]: url`).
+- Images (`![alt](url)`) — explicitly excluded; opens an attack surface
+  via crafted SVG / `data:` URLs that we don't have a safe story for.
+- Tables.
+- Blockquotes.
+- Inline HTML (escaped, never passed through).
+- Mixed lists with arbitrary indent.
+
+The renderer's actual emission patterns (the `usageHint` switch in
+`renderText_fn`) only ever produce `# `..`##### ` and `*…*`. The full
+markdown surface is a courtesy for agent-supplied body text. If we
+discover an agent-supplied pattern that breaks gracefully (renders
+literally instead of as the intended formatting), the engine should be
+extended in `src/markdown/`; trust-boundary tests must extend
+correspondingly.
+
+### Bundle size
+
+Engine source: 5,287 bytes raw → 7,052 bytes base64 (~2KB gzipped).
+Negligible compared to the existing 700KB+ IIFE.
+
+## Considered, rejected
+
+- **Vendoring upstream `@a2ui/markdown-it` from npm.** Bundle size
+  alone (markdown-it + its tokenization stack) would push us past the
+  100KB orchestrator soft-block guidance, and we'd be auditing a much
+  larger surface. Our use case is narrow enough that an in-house engine
+  is a smaller trust target.
+- **Prototype-patching `Text.markdownRenderer`** via
+  `customElements.whenDefined('a2ui-text')`. Works, but every Text
+  instance would need the patch applied at construction; brittle vs.
+  the import-map approach which intercepts at the right layer.
+- **Patching the IIFE to redirect the `import()`.** Forbidden by
+  AGENTS.md; also unnecessary given import maps.
+- **Adding a `<script type="module">` shim that creates a Blob URL and
+  rewrites `window.fetch`** for the markdown specifier. Over-engineered;
+  import maps are the exact spec-blessed mechanism.
+
+## Open / next
+
+- Engine source ships in `src/markdown/` (auditable plain-text). Inlined
+  base64 in HTML is regenerated by `node scripts/inline-markdown-engine.mjs`
+  whenever the engine source changes. A `prebuild` hook could automate
+  this, but kept manual for now to keep the build pipeline obvious.
+- Visual goldens shifted to renderer hash `ef0783e8cfe7`. Per dispatch
+  procedure: orchestrator owns cumulative re-bless, fragment author
+  must NOT commit `test/__snapshots__/`. Honored.
+- Future: if Phase 4+ adds richer agent-supplied body markdown, extend
+  the engine + trust-boundary tests in lockstep. Never extend the
+  output allowlist without a corresponding test row.
+
+## Acceptance
+
+- `npm test` green ✓
+- `npm run test:visual` (with goldens captured at new hash) ✓
+- `node test/markdown-engine.mjs` 29/29 ✓
+- `card-text` fixture: heading renders without literal `### ` prefix ✓
+- Trust-boundary smoke vectors documented and tested ✓
+
+---
+
+### 20260509-162025 — raw-stdin-ready-race (devlog fragment)
+
+Fragment: `knowledge/log/20260509-162025.raw-stdin-ready-race.devlog.md`
+
+
+# Raw-Stdin Ready-Race Buffering
+
+## Author
+Claude Opus 4.7 (1M context), worktree agent-a3f68ecaefb63de69.
+
+## Context
+Phase 4's window-chrome devlog flagged this in "Open / next": when a raw-stdin caller (anything not using `src/a2glimpse.mjs`, which awaits the stdout `ready` event) writes A2UI v0.8 messages before host-ready arrives, `window.a2glimpse.dispatch` is not yet defined and the renderer throws. The Node wrapper handles this correctly via its `ready` gate; raw stdin doesn't.
+
+Phase 2c had set up the existing ready-coordination state machine (`webkitNavFinished` / `hostReady` / `readyEmitted` + `maybeEmitReady()`), so the fix was an extension rather than a rewrite.
+
+## Did
+1. **Added `pendingA2uiMessages: [[String: Any]]` queue** on `AppDelegate` (next to the ready-coordination flags). No bound — if host-ready never fires, that's a real upstream fault and should surface as memory growth, not be papered over.
+
+2. **Split `dispatchA2uiMessage` into a queue-aware front and a renderer-forwarding worker.** The front guards on `!readyEmitted` and appends to the queue; once readiness is emitted, it short-circuits to the worker. Gating on `readyEmitted` (rather than just `hostReady`) keeps replay strictly ordered if `hostReady` ever beats `webkitNavFinished` — degenerate in practice but cheap to be correct about.
+
+3. **Flushed the queue inside `maybeEmitReady()`**, before the `ready` stdout emission. Replay in arrival order. Errors from the buffered dispatch are reported on stdout before `ready` reaches the consumer, which is the right ordering: any latent JS error surfaces with cause-and-effect intact.
+
+4. **Lifecycle commands left untouched.** `get-info`, `close`, `show`, `title`, `resize`, `follow-cursor` route through `handleCommand` and never need the renderer host — they fire immediately as before. Only the four A2UI v0.8 message types (`surfaceUpdate`, `dataModelUpdate`, `beginRendering`, `deleteSurface`) participate in buffering.
+
+## Considered & rejected
+- **Bounded queue + drop-oldest fallback.** Rejected per brief. A queue that never drains means `hostReady` never fired, which means the WebView is broken — that's a fault to surface, not absorb.
+- **Fallback timer that auto-flushes after N seconds even if `hostReady` is false.** Rejected per brief. Same reasoning: papering over a real failure.
+- **Buffer at the stdin reader level (raw `Data`)** instead of post-parse. Rejected — keeping the queue at the parsed-JSON layer means the existing `handleInput` validation runs at arrival time, so a malformed line is still rejected immediately, not held in the queue.
+- **Move flush to a later step (after emit).** Considered; flushing-before-emit was preferred so that any error surfaces before the consumer treats `ready` as "go".
+
+## Verification
+
+### Manual race test (the actual point of this slice)
+
+Wrote a small harness that blasts a full fixture into stdin without waiting for `ready`:
+
+```bash
+node /tmp/race-test.mjs test/fixtures/button-only.jsonl
+```
+
+Pre-fix (rebuilt against stashed working tree):
+```
+STDOUT: {"error":{"message":"A JavaScript exception occurred"}}
+STDOUT: {"error":{"message":"A JavaScript exception occurred"}}
+STDOUT: {"error":{"message":"A JavaScript exception occurred"}}
+STDOUT: {"...,"type":"ready"}
+STDOUT: {"type":"closed"}
+renderer errors: 3
+```
+
+Three JS exceptions — one per A2UI line, exactly the failure mode predicted by the Phase 4 note. The renderer host's `dispatch` was not defined when the messages arrived; the inline `throw new Error('a2glimpse renderer host is not ready')` fires three times. The eventual `ready` does emit (because both flags eventually flip), but the surface is never delivered.
+
+Post-fix:
+```
+STDOUT: {"...,"type":"ready"}
+STDOUT: {"type":"closed"}
+renderer errors: 0
+```
+
+Zero renderer errors. Buffered messages flushed in `maybeEmitReady()` before the stdout `ready`, then forwarded cleanly into the live `window.a2glimpse.dispatch`.
+
+### Smoke (`npm test`)
+Green. The smoke test uses the Node wrapper, which awaits `ready` before writing — buffer is empty in this path, so behavior is identical.
+
+```
+✓ Window opened
+✓ ready event received
+✓ A2UI fixture dispatched
+✓ userAction received: ...
+✓ info event received
+✓ invalid protocol input reported as error
+✓ closed event received
+All tests passed
+```
+
+### Visual (`npm run test:visual`)
+Renderer hash unchanged (`3af906dcaf5e`). Goldens not re-blessed.
+
+Visual harness shows pre-existing focus-jitter flake (modal/checkbox/slider/tabs swing between 0% and >0% across runs both with and without the fix). Pinned-comparison runs:
+- Baseline (working tree stashed, binary rebuilt): 7/8 to 8/8 pass; flake hits a different fixture each run.
+- With fix: same flake distribution, 7/8 typical.
+
+Conclusion: my change is indistinguishable from baseline at the renderer level (which is the expectation — the A2UI dispatch path post-ready is byte-for-byte identical, only the pre-ready pathway changed, and the visual harness awaits `ready` before sending). The flake is window-focus driven and predates this slice.
+
+## Trust boundary
+No new public stdin commands. No new code paths reach `webView.evaluateJavaScript`. The buffered messages are forwarded through the same `forwardA2uiMessageToRenderer` body as the live path; the only change is *when* it's called. Vendored Lit IIFE untouched. Test-mode contract preserved (test mode and production mode both share the buffering path; smoke + visual both exercise it).
+
+## Open / next
+- Visual-test focus-jitter flake (modal/checkbox/slider/tabs) is environmental and pre-existing. Worth a separate slice if it gets noisy enough; out of scope here.
+- `forwardA2uiMessageToRenderer` is now a private helper. If a future slice wants per-message instrumentation (timing, buffered-vs-live tagging), this is the chokepoint to add it.
+
+## Files touched
+- `src/a2glimpse.swift` — `pendingA2uiMessages` queue on `AppDelegate`; `dispatchA2uiMessage` split into queue-front and `forwardA2uiMessageToRenderer` worker; `maybeEmitReady` flushes queue before emitting stdout `ready`.
+- `knowledge/log/20260509-162025.raw-stdin-ready-race.devlog.md` — this fragment.
+- `knowledge/log/20260509-162025.raw-stdin-ready-race.auditlog.md` — companion auditlog fragment.
+
+---
+
+### 20260509-211852 — phase4b-dark-mode (devlog fragment)
+
+Fragment: `knowledge/log/20260509-211852.phase4b-dark-mode.devlog.md`
+
+
+# Phase 4b — Dark Mode
+
+## Author
+Claude Opus 4.7 (1M context), worktree agent-a59d78bdbddb81d71.
+
+## Context
+Phase 4 (window chrome) deferred dark mode as a stretch slice citing token-design surface, live-toggle plumbing, and golden risk. This slice ships those three pieces. Reference: `knowledge/log/20260509-155942.phase4-window-chrome.devlog.md` "Dark mode deferral".
+
+## Did
+
+1. **Dark-mode token pair in host CSS.** Added `body[data-color-scheme="dark"] { ... }` block in `src/a2glimpse-host.html` after the existing light tokens. Body `background` flips to `#0f1115`, `color` to `#e6e8eb`, and the M3 token set rotates to designed (not inverted) dark values:
+   - `--md-sys-color-surface: #1c1f24` — warm-leaning Material 3 dark neutral.
+   - `--md-sys-color-surface-container-{low,high,highest}` stepped neutrals so Card/Modal still read elevated against the body backdrop.
+   - `--md-sys-color-primary: #7aa2ff` — lightened brand blue for AA contrast on dark surface.
+   - `--md-sys-color-on-primary: #0a1733` — dark text on the lightened primary.
+   - `--md-sys-color-outline: #4a5160`, `--md-sys-color-outline-variant: #2a2f38` — visible but not loud.
+   - `--md-sys-color-secondary-container: #213056`, `--md-sys-color-on-secondary-container: #c9d6ff` — used by Tabs.
+   - `--md-sys-elevation-level1/2` shadows re-toned with black instead of slate-blue.
+
+   When the attribute is absent the light tokens (defined on `body`) still apply — Swift's signal is **not** load-bearing for basic operation.
+
+2. **Swift appearance bridge (`src/a2glimpse.swift`).** Three pieces:
+   - `schemeName(for:)` maps `NSAppearance.bestMatch(from: [.darkAqua, .aqua, .vibrantDark, .vibrantLight])` to `"dark" | "light"`.
+   - `currentScheme()` returns `"light"` unconditionally in `--test-mode`; otherwise reads `NSApp.effectiveAppearance`.
+   - `pushAppearance()` `evaluateJavaScript`s `document.body.dataset.colorScheme = '<scheme>'`. DOMContentLoaded fallback guard for early calls.
+   - `startAppearanceTracking()` sets up `NSApp.observe(\.effectiveAppearance, ...)` KVO. Production-mode only — test-mode does not subscribe, so live system toggles can't perturb the harness.
+   - `pushAppearance()` is also called from `webView(_:didFinish:)` as the authoritative initial sync after navigation finishes.
+
+3. **Test-mode contract preserved.** `currentScheme()` returns `"light"` in test-mode regardless of system setting, and KVO is not started, so the harness sees the same wrapper state regardless of host appearance.
+
+4. **Trust boundary.** Appearance is a one-way Swift→page signal via `evaluateJavaScript`. No new public stdin command. The vendored Lit IIFE was not touched.
+
+## Considered & rejected
+
+- **Inverted-light tokens.** Faster but produces poor contrast and looks cheap on Material 3. Spent ~10 minutes picking neutrals that tier correctly with elevation.
+- **`@media (prefers-color-scheme: dark)` instead of explicit attribute.** Looks elegant but couples to the WebView's color-scheme negotiation, which we don't fully control here, and prevents the test-mode pin (you can't override a media query as cleanly). Attribute-driven scheme keeps the contract explicit.
+- **Patching `defaultTheme.additionalStyles` for dark.** Phase 3 baked Card border `#d0d7de`, Slider `accentColor: #0a84ff`, etc. directly into the IIFE's `additionalStyles` (read-only). Those will not flip via custom-property swap — they'll look slightly out of place on dark (Card's hard-coded border in particular). Decided NOT to address in this slice: the wrapper-level shadow-DOM style block on lines 9481–9645 of the host HTML already routes most chrome through `var(--md-sys-color-*)`, which DOES flip. The leftover IIFE additionalStyles are a known limitation; addressing them requires either (a) prototype-patching the renderer's theme application or (b) a wrapper-CSS override layer keyed to `body[data-color-scheme="dark"] a2ui-card { ... }` per component. Both are real work and out of scope for the dark-mode slice itself. Captured in "Open / next".
+- **Subscribing to per-window `effectiveAppearance` instead of `NSApp.effectiveAppearance`.** App-level observation is sufficient here (one window, follows app appearance). Per-window would matter for multi-surface, which is explicitly out-of-scope per `AGENTS.md`.
+
+## Verification
+
+- Smoke (`npm test`): green.
+- Visual harness (`npm run test:visual`): renderer hash advanced from `3af906dcaf5e` → `5d12510dbd17` (CSS edit). Re-blessed locally for verification only (NOT committed). Pixel-diffed old vs new goldens with `compare -metric AE -fuzz 0%`:
+  - tabs.png, text-field-form.png: AE=0 (identical).
+  - button-only, card-text, multiple-choice: AE=44 (0.029% — well under 0.1% threshold).
+  - checkbox: AE=262 (0.17%).
+  - modal: AE=299 (0.19%).
+  - slider: AE=3524 (2.3%).
+
+  Modal/checkbox/slider variance is **pre-existing native-control rendering jitter** — re-running the harness without ANY code change reproduces ~AE=300 swings on those fixtures, and re-running again flips which pass/fail. Not caused by this slice. Re-bless will be cumulative under the orchestrator after the closing-arc slices merge.
+
+- Manual production-mode launch (system in Dark mode): `./src/a2glimpse --width 480 --height 320 --title a2g-dark-verify` with proper ready→fixture handshake. `ready` event reported `appearance.darkMode: true`; window rendered with dark surface, dark Card, lightened primary blue. `closed` clean.
+
+- KVO live-toggle: not directly machine-verified (would require automating macOS appearance toggle), but the code path is straightforward — `NSApp.observe(\.effectiveAppearance)` is the canonical AppKit pattern and the `pushAppearance()` JS write is identical to the initial sync that already verified working.
+
+## Files touched
+
+- `src/a2glimpse-host.html` — dark-token block (37 lines added, no light-mode lines changed).
+- `src/a2glimpse.swift` — `appearanceObservation` ivar, four new methods, two call sites (didFinish nav + applicationDidFinishLaunching).
+- `knowledge/log/20260509-211852.phase4b-dark-mode.devlog.md` — this fragment.
+- `knowledge/log/20260509-211852.phase4b-dark-mode.auditlog.md` — companion auditlog.
+
+## Open / next
+
+- **Phase 3 `additionalStyles` hard-coded colors are not dark-aware.** Card border (`#d0d7de`), Slider accent (`#0a84ff`), Card box-shadow rgbas — all baked into the IIFE-side `defaultTheme.additionalStyles` and won't flip on scheme change. In dark mode they'll look slightly mismatched. Two paths to fix later: (a) wrapper-CSS overrides keyed to `body[data-color-scheme="dark"] a2ui-X` selectors that reach the host element (custom-property cascade alternative), or (b) prototype-patch the renderer to read CSS custom properties at theme-application time. Either is its own slice.
+- **Slider native rendering depends on `accent-color`.** Currently hard-coded `#0a84ff` in additionalStyles. In dark mode, native macOS sliders track system accent — but the `accent-color: #0a84ff` override defeats that. Could consider unsetting it in dark mode.
+- **macOS automated dark/light toggle in tests.** Not currently exercised. The KVO pathway is simple enough that a one-shot manual integration check (toggle Appearance setting → verify window updates) is sufficient confidence. If we want regression coverage, scripting `defaults write -g AppleInterfaceStyle Dark` plus a screenshot fixture pair is feasible.
+
+---
+
+### 20260509-212036 — material-symbols-bundling (devlog fragment)
+
+Fragment: `knowledge/log/20260509-212036.material-symbols-bundling.devlog.md`
+
+
+# Material Symbols Bundling — Devlog Fragment
+
+## Author
+
+Worktree agent dispatched from main session 2026-05-09 to pick up the
+DEFERRED Phase 3 Icon slice and the Modal-retry "clo" follow-up. Branch
+`worktree-agent-a59389158ce77ecea` off `main` @ `351775c`.
+
+## Context
+
+Two prior fragments converged here:
+
+- `knowledge/log/20260509-150227.phase3-icon.{devlog,auditlog}.md` —
+  DEFERRED with a three-option plan (Option A: bundle the font;
+  recommended for productization).
+- `knowledge/log/20260509-155032.phase3-modal-retry.{devlog,auditlog}.md`
+  — modal close button rendered as raw "clo" because the renderer's
+  shadow-DOM `<span class="g-icon">close</span>` had no font.
+
+Same root cause: the vendored renderer's `.g-icon` rule expects a
+"Material Symbols Outlined" font that wasn't bundled. POC was shipping
+visible-but-degraded text labels in place of glyphs.
+
+## Did
+
+### 1. Sourced and shipped the font
+
+Tried the GitHub variable woff2 first
+(`MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2` from
+`google/material-design-icons/variablefont/`). That file is **3.9 MB**
+— the variable axis full-glyph variable font, not the ~350-400 KB the
+prior Icon retro estimated. The retro's number came from the legacy
+`material-icons` font (~1000 glyphs, fixed weight) served by
+`fonts.googleapis.com/icon?family=Material+Icons`, not the modern
+Material Symbols Outlined.
+
+Switched approach: pulled the single-weight 400 outlined ttf from
+the Google Fonts CSS API (~955 KB), recompressed via
+`fonttools ttLib.woff2 compress` (Brotli) to **318 KB woff2**. That's
+the glyph set the renderer actually uses (the `.g-icon` rule pins
+`font-weight: normal`), and it lands within the original retro
+estimate.
+
+Placed at `src/MaterialSymbolsOutlined.woff2` so it sits adjacent to
+the compiled binary. The Swift loader uses
+`webView.loadFileURL(hostURL, allowingReadAccessTo: executableDir)`,
+which grants read access to the `src/` directory — relative URL
+`url("MaterialSymbolsOutlined.woff2")` resolves cleanly.
+
+### 2. Added @font-face to the host wrapper
+
+Inserted in the outer `<style>` block in `src/a2glimpse-host.html`
+(NOT inside the vendored IIFE):
+
+```css
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("MaterialSymbolsOutlined.woff2") format("woff2");
+}
+```
+
+Plus a `.material-symbols-outlined` light-DOM helper class for parity
+with Google's standard naming, in case future host-side icon rendering
+wants it.
+
+### 3. font-display tuning — the close-button fix
+
+First pass used `font-display: optional` to match the renderer's own
+shadow-scoped rule (`.g-icon { font-display: optional }`). Visual
+harness re-bless: icon fixture rendered glyphs (home/star/settings),
+but **modal close button still showed "clo"**. Root cause: `optional`
+gives ~100 ms to load the font and locks fallback for the page lifetime
+otherwise. The icon fixture won the race; the modal's auto-open in
+test-mode lost it.
+
+Switched to `font-display: block` (waits up to 3 s for the font, then
+falls back gracefully). Re-blessed — modal close button now shows the
+× glyph. The renderer's own shadow `.g-icon` rule still uses
+`optional`, but that rule only governs how the renderer *reacts* to
+the font's presence in the document's font set; the host @font-face
+is what populates that set, and `block` ensures it's populated before
+shadow components render.
+
+### 4. Ancillary deliverables
+
+- `package.json` `files` array now includes
+  `src/MaterialSymbolsOutlined.woff2` so npm-installed copies bundle
+  the font.
+- `NOTICE` updated with Material Symbols Apache 2.0 attribution and
+  source/license URLs.
+- `test/fixtures/icon.jsonl` added with three Icon components
+  (home, star, settings) for explicit visual coverage; registered in
+  `test/visual.mjs` `FIXTURES`.
+
+## Considered, rejected
+
+- **Inline base64 @font-face.** Bail rule explicitly forbade it; would
+  also have inflated `a2glimpse-host.html` by ~424 KB and shifted the
+  renderer-content-hash dramatically.
+- **Variable woff2 (3.9 MB).** Functionally fine but ~12× the bytes
+  for axes the renderer doesn't address. Static single-weight matches
+  the renderer's pinned `font-weight: normal`.
+- **Subset to fixture-used glyph names only.** Would cut to ~30 KB but
+  couples the bundle to fixture content. The appliance is
+  general-purpose A2UI; the font's icon set must include anything the
+  renderer might emit (modal close, multipleChoice expand_more, etc.).
+- **Symbol-name → emoji shim (Option B from icon retro).** Already
+  rejected for productization in the prior retro.
+
+## Verification
+
+- `npm run build:macos` — clean.
+- `npm test` smoke — passes (ready / dispatch / userAction / close
+  round trip).
+- `npm run test:visual:update` — captured 9 goldens at renderer hash
+  `6dac962963ef`. Visual inspection:
+  - `icon.png` — three Material Symbols glyphs (home, star,
+    settings) render as actual icons.
+  - `modal.png` — close button × glyph (was "clo").
+  - `multiple-choice.png` — chevron arrow glyph (was "expand_more").
+- `npm run test:visual` — all 9 fixtures pass at threshold 0.1%.
+  (One flaky run prior to the second `:update` flushed harness jitter
+  on slider/checkbox; hash unchanged, render-server compositor
+  variance documented in dispatch procedure under "mcporter /
+  snap-happy concurrency". Final run clean.)
+
+## Trust-boundary confirmation
+
+- No new public stdin commands.
+- Vendored Lit IIFE unchanged. All edits live in the host wrapper's
+  outer `<style>` block.
+- `@font-face` declares a relative-URL asset that loads via the same
+  `loadFileURL`/`allowingReadAccessTo` mechanism the host HTML uses;
+  no new file scheme, no cross-origin risk.
+- Reviewed for `eval`, `unsafeHTML`, agent-input touchpoints — none.
+
+## Open / next
+
+- Snapshots NOT committed (per instruction). Orchestrator re-blesses
+  cumulatively. Renderer hash bumped to `6dac962963ef`.
+- If the appliance ever needs filled / weighted variants, swap to the
+  variable woff2 (~3.9 MB) and update the @font-face `font-weight`
+  range. Not needed for current renderer use.
+- The renderer's shadow-scoped `.g-icon { font-display: optional }`
+  is unchanged (vendored, read-only). It happens to be benign now
+  that the host @font-face loads with `block` — by the time any
+  shadow root resolves the font-family, it's already in the document
+  font set.
+
+---

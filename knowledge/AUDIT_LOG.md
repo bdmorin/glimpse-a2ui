@@ -605,3 +605,268 @@ Untouched. All edits are in the host-page wrapper outer `<style>` and in the hos
 All three are vendored-renderer concerns. They belong on a "renderer compliance suite + bug-fix backlog" track, not a host-page polish PR.
 
 ---
+
+## 2026-05-09 — Closing arc fragments aggregated
+
+Per-slice fragments from the 4 closing-arc parallel agents.
+
+---
+
+
+### 20260509-161953 — usagehint-markdown-engine (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-161953.usagehint-markdown-engine.auditlog.md`
+
+
+## Agent
+Claude Opus 4.7 (1M), worktree-agent-aea30a753f63b1b24
+
+## Action
+Implemented `Text.usageHint` markdown engine. Wrote allowlist-based markdown
+renderer in `src/markdown/a2glimpse-markdown.mjs`, inlined into
+`src/a2glimpse-host.html` as a `data:` URL via a `<script type="importmap">`
+mapping `@a2ui/markdown-it` to the engine. The vendored Lit IIFE's existing
+`await import("@a2ui/markdown-it")` now resolves at the allowlist engine, so
+the `MarkdownDirective` produces real `<h*>`/`<em>`/etc HTML instead of
+falling through to the literal-marker fallback span. IIFE itself is
+unmodified.
+
+## Outcome
+OK
+
+## Artifacts
+- `src/markdown/a2glimpse-markdown.mjs` (new) — 130-line allowlist engine
+- `scripts/inline-markdown-engine.mjs` (new) — base64-inlines engine into HTML
+- `test/markdown-engine.mjs` (new) — 29 trust-boundary unit tests, all green
+- `src/a2glimpse-host.html` — adds `<head>` import map block + minor CSS comment update
+- `knowledge/log/20260509-161953.usagehint-markdown-engine.devlog.md` — devlog with full threat analysis
+
+## Notes
+- Trust boundary intact: engine HTML-escapes input first, allowlists output
+  tags, allowlists URL schemes, allowlists class names. Tested against
+  `<script>`, `<img onerror=…>`, `<iframe>`, `<style>`, `<svg/onload>`,
+  `javascript:`/`data:`/`vbscript:` URLs, attribute-escape via `"`-injection,
+  and class-name injection through `tagClassMap`.
+- Visual goldens captured at new renderer hash `ef0783e8cfe7`. NOT committed
+  per dispatch procedure (orchestrator owns cumulative re-bless).
+- Bundle size delta ~7KB base64 (~5KB raw); negligible.
+- Prior dispatch's DEFERRED rationale was structurally correct under the
+  assumption that intervention required either a private context provider
+  or an IIFE patch. ESM import maps were the missing third path: they
+  intercept bare-specifier resolution at the document level, including
+  dynamic `import()` from classic scripts. Safari/WKWebView 16.4+ supports
+  this.
+
+---
+
+### 20260509-162025 — raw-stdin-ready-race (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-162025.raw-stdin-ready-race.auditlog.md`
+
+
+# Raw-Stdin Ready-Race Buffering — Audit
+
+## Agent
+Claude Opus 4.7 (1M context).
+
+## Worktree
+`worktree-agent-a3f68ecaefb63de69`, branched from `main` at `fb1f604` (clean rebase, no conflicts).
+
+## Lineage
+Originates from the Phase 4 window-chrome devlog (`knowledge/log/20260509-155942.phase4-window-chrome.devlog.md`) "Open / next" section. Companion to the Phase 2c ready-coordination state machine (Aug 2026 retrospective in `knowledge/DEV_LOG.md`).
+
+## Action
+Added pre-host-ready buffering for A2UI v0.8 stdin messages, replayed on emit of stdout `ready`. Pure correctness fix — no protocol additions, no new public commands.
+
+## Outcome
+**OK.**
+
+- Manual race test (pre-fix): 3 renderer JS exceptions captured.
+- Manual race test (post-fix): 0 renderer errors, surface delivered.
+- `npm test` smoke: green.
+- `npm run test:visual`: pre-existing focus-jitter flake, indistinguishable from baseline; goldens not re-blessed.
+
+## Artifacts
+- `src/a2glimpse.swift` (modified)
+- `knowledge/log/20260509-162025.raw-stdin-ready-race.devlog.md` (new)
+- `knowledge/log/20260509-162025.raw-stdin-ready-race.auditlog.md` (this file)
+
+## Trust boundary
+Intact. No new public stdin commands. No new path to `webView.evaluateJavaScript`. Vendored renderer IIFE untouched. Test-mode contract preserved.
+
+## Notes
+- Did not commit `test/__snapshots__/` per orchestrator instructions.
+- The visual flake is environmental (window focus changing slider/checkbox accent color between captures); pre-dates this slice. Confirmed by stashing the change, rebuilding, and re-running — flake persists with identical distribution. Not a fix-introduced regression.
+- Brief explicitly forbade fallback timers and arbitrary queue caps; both rejected per spec.
+
+---
+
+### 20260509-211852 — phase4b-dark-mode (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-211852.phase4b-dark-mode.auditlog.md`
+
+
+# Phase 4b — Dark Mode (auditlog)
+
+## Agent
+Claude Opus 4.7 (1M context).
+
+## Worktree
+`/Users/brahn/src/github.com/bdmorin/glimpse-a2ui/.claude/worktrees/agent-a59d78bdbddb81d71`
+Branch: `worktree-agent-a59d78bdbddb81d71`. Rebased onto `main` at session start (already up-to-date at `351775c`).
+
+## Lineage
+- Predecessor: `knowledge/log/20260509-155942.phase4-window-chrome.{devlog,auditlog}.md` (deferred dark-mode stretch).
+- Conventions: `knowledge/20260509-145843.parallel-agent-log-fragments.knowledge.md`,
+  `knowledge/20260509-152436.worktree-isolation-verification.knowledge.md`,
+  `knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md`.
+- Reference: `knowledge/20260509-154525.vendored-renderer-pathologies.knowledge.md` (CSS custom-properties lever — used here).
+
+## Action
+Implemented dark-mode token pair + Swift appearance bridge:
+- Added `body[data-color-scheme="dark"] { ... }` CSS block with designed M3 dark tokens (background, surface tiers, lightened primary, retoned outlines/elevations).
+- Added Swift KVO observer on `NSApp.effectiveAppearance` that pushes `document.body.dataset.colorScheme` via `evaluateJavaScript`.
+- Test-mode pinned to light (KVO not subscribed; `currentScheme()` returns `"light"` unconditionally).
+- Default behavior (no attribute) = light tokens; Swift signal is not load-bearing.
+
+## Outcome
+**MIXED** — dark-scheme tokens ship and KVO bridge works; manual production-mode launch in Dark verified. However, Phase 3 `additionalStyles` colors baked into the vendored IIFE (Card border, Slider accent, Card shadow rgbas) are not custom-property-driven and won't flip on scheme change. They'll look mildly misplaced in dark mode. This was anticipated in the brief ("decide: leave the additionalStyles colors alone, or move them through CSS variables in the wrapper") and deferred per the bail-and-log rule — addressing requires either prototype-patching theme application or a wrapper-CSS override layer per component, both of which are their own slice.
+
+## Acceptance
+- `npm test` smoke: GREEN.
+- `npm run test:visual`: renderer hash advanced `3af906dcaf5e` → `5d12510dbd17`. Locally re-blessed for verification only (NOT committed per orchestrator brief). Cross-hash pixel-diff vs prior goldens shows AE=0 to AE=44 (0.029%) for stable fixtures and AE=262–3524 for native-control fixtures (modal, checkbox, slider) — known native-rendering jitter, not caused by this slice (same magnitude reproduces with no code change). Orchestrator owns cumulative re-bless after closing-arc slices merge.
+- Manual production-mode launch: `appearance.darkMode: true` reported on `ready`; window rendered with dark Card surface, lightened primary blue, properly toned text. `closed` clean.
+- Trust boundary intact: no new public stdin commands; vendored Lit IIFE untouched; `--test-mode` gate preserved (does not subscribe to system appearance).
+
+## Artifacts
+- `src/a2glimpse-host.html` — dark-token block (added; light tokens unchanged).
+- `src/a2glimpse.swift` — `appearanceObservation` ivar; `schemeName(for:)`, `currentScheme()`, `pushAppearance()`, `startAppearanceTracking()` methods; call sites in `applicationDidFinishLaunching` and `didFinish` navigation.
+- `knowledge/log/20260509-211852.phase4b-dark-mode.devlog.md` — companion devlog fragment.
+- `knowledge/log/20260509-211852.phase4b-dark-mode.auditlog.md` — this file.
+- `test/__snapshots__/5d12510dbd17/*.png` — locally re-blessed for verification, NOT committed.
+
+## Notes
+- **Isolation verified** per `knowledge/20260509-152436.worktree-isolation-verification.knowledge.md`: `pwd`, `git rev-parse --git-dir` (contains `/worktrees/`), `git rev-parse --show-toplevel` all match the agent's worktree.
+- **Outcome MIXED rationale.** The slice's MUST (production a2glimpse follows macOS dark-mode toggle live; test-mode pinned light) is shipped and verified. The wrapper-level CSS chrome that routes through `--md-sys-color-*` (Card backgrounds, Modal panel, Tabs, MultipleChoice, CheckBox) flips correctly. The IIFE-side `additionalStyles` constants (Card border `#d0d7de`, Slider accent `#0a84ff`, Card shadow rgbas) are read-only and don't flip — these will read slightly out-of-place in dark mode (mainly Card's hard-coded light-grey border on a dark surface). This limitation was anticipated in the dispatch brief and is captured as next-iteration work in the devlog "Open / next" section. Shipping the wrapper-side dark scheme now unblocks the closing-arc work; the IIFE-color polish is its own slice.
+- KVO uses `NSApp.observe(\.effectiveAppearance)` — App-level rather than per-window. Sufficient because a2glimpse is single-window by design (multi-surface is explicitly out-of-scope per `AGENTS.md`).
+- Live-toggle (system Appearance switch while app is running) was not machine-verified end-to-end but uses the canonical AppKit KVO pattern; the code path that runs on KVO callback is identical to the initial-sync path that was verified working.
+
+---
+
+### 20260509-212036 — material-symbols-bundling (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-212036.material-symbols-bundling.auditlog.md`
+
+
+# Material Symbols Bundling — Auditlog Fragment
+
+## Agent
+
+Claude Opus 4.7 (1M) — Material Symbols bundling slice. Picks up the
+DEFERRED Phase 3 Icon slice and the Modal-retry "clo" follow-up.
+
+## Worktree
+
+`worktree-agent-a59389158ce77ecea`, branched from `main` @ `351775c`.
+Single themed commit on the branch (see Artifacts).
+
+## Lineage
+
+- Predecessors:
+  - `knowledge/log/20260509-150227.phase3-icon.{devlog,auditlog}.md`
+    (DEFERRED with three-option plan).
+  - `knowledge/log/20260509-155032.phase3-modal-retry.{devlog,auditlog}.md`
+    (close button "clo" call-out).
+- Companion devlog fragment:
+  `knowledge/log/20260509-212036.material-symbols-bundling.devlog.md`.
+
+## Action
+
+Implemented Option A from the Icon retro:
+
+1. Vendored `src/MaterialSymbolsOutlined.woff2` (318 KB, single-weight
+   400 outlined, ttf→woff2 via fontTools/Brotli; source: Google Fonts
+   API v336).
+2. Added `@font-face` and `.material-symbols-outlined` rules to the
+   outer `<style>` block in `src/a2glimpse-host.html`. Used
+   `font-display: block` (not `optional` — see "Notes" below).
+3. Updated `package.json` `files` array to ship the woff2.
+4. Updated `NOTICE` with Material Symbols Apache 2.0 attribution.
+5. Added `test/fixtures/icon.jsonl` and registered `'icon'` in
+   `test/visual.mjs` `FIXTURES`.
+6. Re-blessed visual goldens at new renderer hash `6dac962963ef`.
+   (Goldens NOT committed; orchestrator owns cumulative re-bless.)
+
+Vendored Lit IIFE NOT modified.
+
+## Outcome
+
+**OK.**
+
+Acceptance per dispatch:
+
+| Acceptance criterion | Result |
+|---|---|
+| `npm test` smoke green | ✓ (ready / dispatch / userAction / close) |
+| `npm run test:visual` green at new hash with glyph icons | ✓ (9/9 fixtures, hash `6dac962963ef`) |
+| Modal close button renders as × glyph (not "clo") | ✓ verified in `modal.png` |
+| `multiple-choice` chevron renders as glyph (not "expand_more") | ✓ verified in `multiple-choice.png` |
+| New `icon.jsonl` fixture with explicit Icon components | ✓ (home / star / settings, all glyphs) |
+| `package.json` ships the font | ✓ |
+| `NOTICE` includes Material Symbols Apache 2.0 attribution | ✓ |
+| Trust boundary intact | ✓ no new stdin commands; IIFE unchanged |
+
+## Artifacts
+
+- `src/MaterialSymbolsOutlined.woff2` (new, 318 KB)
+- `src/a2glimpse-host.html` (`@font-face` + helper class added to head
+  `<style>`)
+- `package.json` (files array)
+- `NOTICE` (Apache 2.0 attribution block)
+- `test/fixtures/icon.jsonl` (new)
+- `test/visual.mjs` (FIXTURES list)
+- `knowledge/log/20260509-212036.material-symbols-bundling.devlog.md`
+- This file.
+
+Snapshots at `test/__snapshots__/6dac962963ef/` are NOT committed.
+
+## Notes
+
+### font-display: block, not optional
+
+The original Icon retro suggested `font-display: optional` to match
+the renderer's existing `.g-icon` rule. First pass used `optional`
+and shipped a working icon fixture but **the modal close button
+still rendered "clo"** — `optional` gives only ~100 ms before locking
+fallback for the page lifetime, and the modal's test-mode auto-open
+lost the race.
+
+Switched to `block` (3 s wait, then graceful fallback). Modal close
+button now renders the × glyph correctly. The renderer's own
+shadow-scoped `optional` is unchanged (read-only IIFE) and is benign
+because the host's `block` ensures the font is in the document font
+set by the time any shadow root resolves it.
+
+If the asset is somehow missing at runtime (broken install, etc.),
+`block` produces ~3 s of invisible text followed by snake_case
+fallback — still recoverable, not a hard breakage.
+
+### Font size — retro estimate vs reality
+
+Retro estimated 350-400 KB based on the legacy `material-icons` font
+(~1000 glyphs). Material Symbols Outlined variable axis with full
+glyph set is actually 3.9 MB woff2. The shipped 318 KB is the
+single-weight 400 outlined static font, which is what the renderer
+actually uses (it pins `font-weight: normal`). Variable axes
+(opsz / wght / FILL / GRAD) are not exercised by the vendored
+renderer — bundling them would be dead weight.
+
+### Why src/ and not assets/
+
+`loadFileURL(hostURL, allowingReadAccessTo: executableDir)` grants
+WebView read access to the directory containing the binary
+(`src/`). Putting the font at `src/` keeps it adjacent at both
+build-time and ship-time without changes to the build script.
+The npm `files` array carries it into installed copies.
+
+---
