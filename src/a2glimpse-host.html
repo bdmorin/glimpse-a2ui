@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>a2glimpse</title>
 <style>html,body{margin:0;min-height:100%;background:Canvas;color:CanvasText;}body{overflow:auto;}</style>
+<style id="a2glimpse-test-mode">
+/* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
+body[data-test-mode] *, body[data-test-mode] *::before, body[data-test-mode] *::after {
+  animation: none !important;
+  transition: none !important;
+  caret-color: transparent !important;
+}
+body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+</style>
 </head>
 <body>
 <a2glimpse-app></a2glimpse-app>

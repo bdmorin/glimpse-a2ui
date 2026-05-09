@@ -458,6 +458,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         let ucc = WKUserContentController()
         let script = WKUserScript(source: bridgeJS, injectionTime: .atDocumentStart, forMainFrameOnly: true)
         ucc.addUserScript(script)
+        if config.testMode {
+            // Activate the host page's test-mode CSS scaffolding (animations off,
+            // caret hidden, focus rings neutralized) for deterministic visual capture.
+            // Trust boundary: this is a one-way Swift -> page signal, not a new
+            // public stdin command.
+            let testModeJS = """
+            (function() {
+              function activate() {
+                if (document.body) {
+                  document.body.dataset.testMode = '';
+                } else {
+                  document.addEventListener('DOMContentLoaded', activate, { once: true });
+                }
+              }
+              activate();
+            })();
+            """
+            let testScript = WKUserScript(source: testModeJS, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+            ucc.addUserScript(testScript)
+        }
         ucc.add(self, name: "glimpse")
         let wkConfig = WKWebViewConfiguration()
         wkConfig.userContentController = ucc
