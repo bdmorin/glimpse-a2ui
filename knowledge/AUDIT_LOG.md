@@ -118,3 +118,490 @@ Never edit past entries. Correct with a follow-up entry that references the prio
 **Notes:** Trust boundary unchanged — the new bridge message is a one-way page→Swift signal inside the trusted process, not exposed on stdin. Vendored Lit IIFE remained read-only; it already dispatched `a2glimpse-host-ready` after `customElements.define` and `window.a2glimpse` wiring (line 10701), which is exactly the contract Phase 2c needed. Acceptance: `npm test` green; `npm run test:visual` green 6/6 across 3 back-to-back runs (all 0.0000% noise — `ready` is now tighter, capture-time variance dropped from 0–8 px to 0 px); CLI probe sent a valid fixture immediately after `ready` and the renderer accepted it without error (and a separate probe with a malformed payload produced an immediate schema-validation error from the renderer, proving the surface is genuinely live at `ready`-time, not merely navigated). Optional harness-settle reduction NOT taken — visual harness is already 100% stable at 0.0000%, value-neutral to change; left for a future tightening pass.
 
 ---
+
+## 2026-05-09 — Phase 3 component polish (per-slice fragments aggregated)
+
+Per-slice fragments from parallel worktree agents, aggregated in dispatch order. Original fragments preserved under `knowledge/log/`.
+
+---
+
+
+### 20260509-150227 — phase3-icon (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-150227.phase3-icon.auditlog.md`
+
+
+# Phase 3 Icon — Auditlog Fragment
+
+## Agent
+
+Claude Opus 4.7 (1M) — Phase 3 polish dispatch, Icon slice.
+
+## Worktree
+
+`worktree-agent-ada653d20b46e2a26`, branched from `main` @ `351775c`
+("docs+chore: orient repo around a2glimpse identity post-POC"). No
+commits on the branch — worktree carries only the two log fragments.
+
+## Lineage
+
+- Predecessors: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md`
+  (Phase 3, row `wt/polish-icon`, marked likely DEFERRED);
+  `knowledge/20260509-130112.poc-retrospective.retrospective.md`
+  ("Icon degrades without Material Symbols font availability");
+  `knowledge/20260509-145843.parallel-agent-log-fragments.knowledge.md`.
+- Companion devlog fragment:
+  `knowledge/log/20260509-150227.phase3-icon.devlog.md`.
+
+## Action
+
+Investigation only. Read-only inspection of:
+- `src/a2glimpse-host.html` head + `.g-icon` style block (line ~6158)
+  + `renderIcon_fn` (line ~8916).
+- Existing fixtures under `test/fixtures/` (no icon fixture exists).
+
+No source files modified. No fixture added. No commits.
+
+## Outcome
+
+**DEFERRED.**
+
+The retro's framing ("Icon degrades without Material Symbols font
+availability") is accurate but the degradation is softer than it
+sounds: with `font-display: optional` and no matching font installed,
+the browser falls back to the platform default font and renders the
+snake_case ligature key (e.g. `arrow_forward`) as plain text. That is
+visible — not an empty box — and is functional for POC purposes.
+
+No reachable polish-pass fix exists:
+
+1. The renderer's `.g-icon` rule is shadow-scoped via Lit's adopted
+   stylesheets. Document-level CSS in `a2glimpse-host.html` cannot
+   override `font-family` inside the component's shadow root.
+2. Editing the vendored Lit renderer is forbidden by Phase 3 ground
+   rules.
+3. A MutationObserver-based shim that walks shadow roots and rewrites
+   `.g-icon` text content is technically possible but is a
+   host-runtime feature, not host theme — out of scope and high cost.
+4. CSS has no "@font-face failed to load" pseudo, so no pure-CSS
+   visible-fallback exists for the missing-font case.
+
+The one mechanism the renderer DOES respect from outside the shadow
+root is `@font-face`, because font lookups are global. That makes
+"bundle Material Symbols" the only path to actual glyphs — and that's
+a productization decision, not a CSS tweak.
+
+## Artifacts
+
+- `knowledge/log/20260509-150227.phase3-icon.devlog.md` (devlog
+  fragment; investigation log, considered/rejected list).
+- This file.
+
+(No code, no fixtures, no goldens.)
+
+## Notes — concrete next-iteration plan
+
+When Icon is picked up post-POC, the path forward:
+
+### Option A — Bundle Material Symbols Outlined inline (recommended)
+
+- **Asset.** `Material Symbols Outlined` variable woff2. Source:
+  https://github.com/google/material-design-icons (`variablefont/`
+  directory) or fonts.google.com export.
+- **Size.** Variable woff2 with the full ~3000-glyph set is roughly
+  **350–400 KB** on disk; base64-inlined into HTML it's ~470–530 KB
+  (4/3 inflation). The vendored host page is currently ~10.9k lines
+  / sub-MB; inlining roughly doubles it.
+- **License.** Apache License 2.0. Requires attribution. Add a NOTICE
+  entry and a comment block at the top of the inlined `@font-face` in
+  `a2glimpse-host.html`.
+- **Integration point.** Single `<style>` block in
+  `src/a2glimpse-host.html` `<head>`:
+  ```html
+  <style>
+    @font-face {
+      font-family: "Material Symbols Outlined";
+      font-style: normal;
+      font-weight: 100 700;
+      font-display: block;
+      src: url(data:font/woff2;base64,...) format("woff2-variations");
+    }
+  </style>
+  ```
+  No renderer edits. Font-family name MUST match the renderer's exact
+  string ("Material Symbols Outlined").
+- **Trade-off — subset.** A subset built only for icon names actually
+  used by a2glimpse fixtures cuts bundle to ~30–60 KB but couples the
+  bundle to fixture content, which is wrong for a general-purpose
+  appliance. Reject subsetting unless the appliance's icon set is
+  pinned.
+- **Trade-off — external CDN.** Loading from `fonts.googleapis.com`
+  is the cheapest in-bundle answer (zero bytes shipped) but
+  reintroduces a network dependency on a third party, which conflicts
+  with the "single-binary appliance" stance and the trust-boundary
+  posture. Reject for productization; acceptable only for a dev-mode
+  toggle.
+- **Test impact.** Re-baseline visual goldens after the font lands
+  (Icon-bearing fixtures will change). Add
+  `test/fixtures/icon.jsonl` covering: literal-name happy path,
+  filled variant, path-bound name via dataModel, invalid name (should
+  show "Invalid icon name" string from the renderer).
+
+### Option B — Symbol-name → emoji map shim (rejected for productization)
+
+A host-page MutationObserver that walks shadow roots, finds
+`.g-icon` spans, and substitutes a curated emoji per known
+Material Symbol name. ~100 lines, zero font weight. Rejected because
+(a) it's a runtime behavior that fights the renderer, (b) emoji
+weight/style breaks visual consistency with the rest of the surface,
+(c) maintaining the name→emoji table is per-glyph manual work.
+
+### Option C — Stay deferred, document the degradation user-side
+
+If Icon is rare in real a2glimpse traffic, the existing
+"snake_case text" fallback is acceptable indefinitely. README should
+get a one-liner under "Known POC limitations" pointing at this audit
+fragment. Cheapest possible "fix."
+
+### Decision criteria for next iteration
+
+- If a2glimpse moves toward a polished demo or distributable: Option A.
+- If a2glimpse stays a developer-facing pipe with rare Icon use:
+  Option C.
+- Skip B entirely.
+
+### Effort estimate (Option A)
+
+~1 focused session: download font, base64-encode, inline, add NOTICE
+entry, add `test/fixtures/icon.jsonl`, regenerate visual goldens for
+all icon-bearing fixtures, verify shadow-root font lookup works
+(should — fonts are global).
+
+---
+
+### 20260509-150258 — phase3-usagehint-markdown (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-150258.phase3-usagehint-markdown.auditlog.md`
+
+
+# AUDIT — Phase 3 usageHint markdown rendering
+
+## Agent
+Claude Opus 4.7 (1M).
+
+## Worktree
+`worktree-agent-a25ece0373d6278b4`, branched from `main` @ `351775c`
+(`docs+chore: orient repo around a2glimpse identity post-POC`).
+No commits made.
+
+## Lineage
+- Plan: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md`
+  Phase 3, row `wt/polish-usagehint-markdown` (flagged "likely DEFERRED").
+- Retro pre-condition:
+  `knowledge/20260509-130112.poc-retrospective.retrospective.md` — call-out
+  that `usageHint` headings render markdown markers literally.
+- Devlog fragment (this slice):
+  `knowledge/log/20260509-150258.phase3-usagehint-markdown.devlog.md`.
+
+## Action
+Read the vendored IIFE's markdown path
+(`src/a2glimpse-host.html:10388-10545`) and the `card-text` fixture. Did
+not modify any files in `src/`. Wrote the deferral analysis to the devlog
+fragment above.
+
+## Outcome
+**DEFERRED.** Three structural reasons:
+
+1. The renderer's only injection paths run through `unsafeHTML` — anything
+   we feed in is HTML-trusted by the trust boundary a2glimpse exists to
+   protect.
+2. The Lit context symbol that would let us inject a `markdownRenderer`
+   from outside (`markdown2`) is private to the vendored IIFE; no
+   host-shim can subscribe to it. Editing the IIFE is forbidden by
+   `AGENTS.md` and by the plan's Phase 3 conventions.
+3. The "tiny regex shim" path in the prompt fails on (1) and (2): even if
+   we wrote a 30-line bold/italic shim, we cannot install it without
+   editing the IIFE, and its output is `unsafeHTML`-injected so the
+   shim's correctness *is* the trust boundary for those strings.
+
+The current behaviour ("literal `### Card Title`") is cosmetic, not a
+safety regression. Phase 3 cluster work and Phase 4 window chrome do not
+depend on this fix.
+
+## Artifacts
+- `knowledge/log/20260509-150258.phase3-usagehint-markdown.devlog.md`
+  (security analysis + revisit pre-conditions).
+- This file.
+
+## Notes
+- No `npm test` run — no code changes to validate.
+- No visual-regression baselines written or updated.
+- No commits or pushes from this worktree.
+- Recommendation when this is picked up: prefer bundling
+  `@a2ui/markdown-it` (Google's renderer) over rolling a shim. Same trust
+  posture as the existing vendored Lit bundle. Capture the bundling step
+  in `knowledge/AUDIT_LOG.md` so the vendoring lineage is durable.
+
+---
+
+### 20260509-201101 — phase3-textfield-slider (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-201101.phase3-textfield-slider.auditlog.md`
+
+
+# Phase 3 — TextField + Slider — AUDIT
+
+## Agent
+Claude Opus 4.7 (1M context), dispatched into worktree
+`agent-a1d17a3f4500abd0c` from main session.
+
+## Worktree
+`/Users/brahn/src/github.com/bdmorin/glimpse-a2ui/.claude/worktrees/agent-a1d17a3f4500abd0c`
+(branched from `main`, ahead of origin/main).
+
+## Lineage
+Succeeds Phase 1 (visual harness) and Phase 2 (hardening). One of the
+parallel Phase 3 slices defined in
+`knowledge/20260509-140000.polish-and-hardening-plan.plan.md`.
+
+## Action
+Polished TextField and Slider components in `src/a2glimpse-host.html` via
+two vehicles, both within the documented "host wrapper / theme CSS"
+boundary:
+
+1. `defaultTheme.additionalStyles.TextField` and `.Slider` — applied as
+   inline `style=` on the inner `<input>` elements inside the components'
+   shadow DOM, by the vendored renderField functions.
+2. Outer `<style>` rules on the custom-element hosts (`a2ui-textfield`,
+   `a2ui-slider`) — light-DOM only, layout/spacing only.
+
+Added `test/fixtures/slider.jsonl` and registered it in
+`test/visual.mjs` FIXTURES.
+
+The vendored Lit IIFE — decorators, classes, renderField bodies, shadow
+DOM CSS — was not modified.
+
+## Outcome
+OK. TextField now reads as a real form input; Slider track + thumb are
+visible with brand accent. Smoke (`npm test`) green pre- and post-change.
+
+Caveats:
+- Slider label visibility (the literalString labels above each track)
+  may not be rendering. Tracked as UNCERTAIN in the devlog "Open / next"
+  — not chased to root cause per the >1-session bail rule. Recommend a
+  follow-up touch.
+- mcporter/snap-happy timed out repeatedly in the latter half of the
+  session, preventing a final at-merged-hash re-bless of goldens. Stale
+  intermediate goldens were not committed. Re-bless is orchestrator's
+  Phase 5 task and is independent of code correctness.
+
+## Artifacts
+- Commit `114f934` — `test(visual): add slider fixture + register in harness`
+- Commit `fe89f14` — `feat(host): polish TextField + Slider via additionalStyles + light-DOM shims`
+- `knowledge/log/20260509-201101.phase3-textfield-slider.devlog.md`
+
+No goldens committed under this slice (renderer hash shifted mid-session
+due to a parallel slice's edits landing in the same worktree; re-bless
+deferred).
+
+## Notes
+- The worktree also carries unrelated parallel-slice changes: MD3 `:root`
+  custom-property tokens, `a2ui-multiplechoice` and `a2ui-checkbox` host
+  shims, a `checkbox` entry in FIXTURES, and an untracked
+  `test/fixtures/checkbox.jsonl`. These are flagged as belonging to
+  `wt/polish-multiplechoice-checkbox` (sibling slice). Left intact per
+  the "stay in lane" convention; the system explicitly noted these as
+  "intentional" external modifications.
+- Trust boundary unchanged. Vendored renderer source unchanged.
+- `.gitignore` for `test/__snapshots__/` was not modified; the existing
+  rules already cover transient diff/actual artifacts.
+
+---
+
+### 20260509-201417 — phase3-tabs (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-201417.phase3-tabs.auditlog.md`
+
+
+# Phase 3 — Tabs polish (audit)
+
+## Agent
+Claude Opus 4.7 (sub-agent dispatched in `worktree-agent-a56fd9a1aa9dea681`).
+
+## Worktree
+`worktree-agent-a56fd9a1aa9dea681` (branch
+`worktree-agent-a56fd9a1aa9dea681`), reset to `wt/polish-button-card-text`
+tip (`05ad47e`) — local `main` was a stale pre-POC pointer.
+
+## Lineage
+- Predecessor: `wt/polish-button-card-text` (Phase 3 first slice, merged).
+- Plan: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` row
+  `wt/polish-tabs`.
+- Companion: `knowledge/log/20260509-201417.phase3-tabs.devlog.md`.
+
+## Action
+- Diagnosed blank tabs render as a vendored-renderer default-theme gap
+  (`theme.components.Tabs.element` undefined) causing `classMap` to throw
+  via `Object.keys(undefined)`, aborting Lit's render commit.
+- Added a wrapper-side prototype patch in `src/a2glimpse-host.html` (after
+  the IIFE) that fills in the missing theme keys on each `<a2ui-tabs>`
+  update.
+- Re-ran smoke + visual harness — all green at new renderer hash
+  `e6f39756bf61`.
+
+## Outcome
+OK. Tabs now render correctly (3 buttons, selected-tab content slotted).
+Vendored Lit IIFE untouched; trust boundary intact (no new public stdin
+surface, no `html`/`file`/`eval` reintroduction). Fixture
+`test/fixtures/tabs.jsonl` was correct as-written and was not modified.
+
+## Artifacts
+- `src/a2glimpse-host.html` — wrapper patch script appended after IIFE.
+- `knowledge/log/20260509-201417.phase3-tabs.devlog.md` — fragment.
+- Goldens at `test/__snapshots__/e6f39756bf61/` — generated locally for
+  validation, NOT committed (per orchestrator instruction).
+
+## Notes
+- Per plan, deeper Tabs visual polish (padding, hover/focus, selected
+  styling consistent with Button's `additionalStyles`) is deferred. The
+  structural blank-render fix consumed the bail-rule session budget. The
+  current render is functional but unstyled (native `<button>` chrome).
+  Follow-up slice `wt/polish-tabs-visual` recommended.
+- Renderer hash bumped (script tag added). Decision on re-blessing the
+  full snapshot directory under the new hash is left to the orchestrator.
+- Trust boundary review: the patch only mutates a Lit component
+  prototype's `update` lifecycle on the host page. It does not introduce
+  any new postMessage handler, stdin command, or evaluation path. No
+  agent-controlled data flows through the patch.
+
+---
+
+### 20260509-201935 — phase3-button-card-text (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-201935.phase3-button-card-text.auditlog.md`
+
+
+# Phase 3 — Button + Card + Text polish (audit)
+
+## Agent
+Claude Opus 4.7 (1M context), dispatched as Phase 3 worktree agent.
+
+## Worktree
+`worktree-agent-ac8390385b5f3940e` → branch `wt/polish-button-card-text`,
+rebased forward onto `main@05ad47e` before any edits.
+
+## Lineage
+- Plan: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` (Phase 3 row).
+- Source of issues: `knowledge/20260509-130112.poc-retrospective.retrospective.md`
+  Visual Debugging Findings.
+- Convention: `knowledge/20260509-145843.parallel-agent-log-fragments.knowledge.md`.
+
+## Action
+Edited `src/a2glimpse-host.html` head `<style>` block to:
+- Set host typography + neutral Material Design token palette.
+- Pad the body (20px 24px) so renderer content no longer hugs the WKWebView chrome.
+- Suppress body-level scrollbar (renderer Card/Column shadow trees own their
+  own overflow).
+- Style `a2ui-text[usage-hint=...]` for heading visual hierarchy. `usageHint` is
+  reflected as `usage-hint` (IIFE line 10512), so attribute selectors work.
+- Add `a2ui-card { margin: 4px 0; }`.
+
+Vendored Lit IIFE (everything from `<script>` block onward) untouched.
+Trust boundary intact — no protocol changes, no new public commands.
+
+## Outcome
+**MIXED**. The Button + Card + Text visual baseline is meaningfully improved:
+content no longer hugs the chrome, card has clear breathing room, heading-hint
+text picks up font-size/weight where the renderer's reflected attribute is
+present. The smoke test (`npm test`) passes; the visual harness
+(`npm run test:visual`) matches the locally-updated goldens at ≤0.03% diff.
+
+DEFERRED: full markdown rendering of `Text` `usageHint` heading content. The
+title in card-text still shows the literal `### ` markdown markers because
+the host has no markdown engine wired into the renderer's `markdown`
+context slot. Reason: requires bundling a markdown engine inside the
+trusted host page; not a 1-session task on its own. Estimated revisit
+effort: 0.5–1 session, scoped to Phase 3's `wt/polish-usagehint-markdown`.
+
+## Artifacts
+- Modified: `src/a2glimpse-host.html` (only the top-of-file `<style>` block).
+- New: `knowledge/log/20260509-201935.phase3-button-card-text.devlog.md`,
+       `knowledge/log/20260509-201935.phase3-button-card-text.auditlog.md`.
+- NOT committed: golden snapshot updates. Per orchestrator instructions,
+  Phase 3 is re-blessed cumulatively at end-of-phase. Untracked snapshot
+  directories under `test/__snapshots__/` are intermediate iteration
+  captures; the orchestrator should run `npm run test:visual:update` once
+  after merging all Phase 3 slices.
+
+## Notes
+- Found and surfaced one timeout incident during iteration: `mcporter
+  snap-happy.TakeScreenshot` stalled when stale `a2glimpse` processes from
+  prior background bash invocations were holding window IDs. Cause: an
+  earlier `npm run test:visual:update` was launched in the background and
+  killed mid-run by the harness, leaving a `--test-mode` window orphaned.
+  Resolution was a clean `pkill -9 -f a2glimpse` between runs, not a silent
+  retry. Per the plan's "Timeouts are HARD_BLOCK, never OK" rule: surfacing
+  here, not papering over. Root cause is the harness already kills the
+  child on `proc.stdin.write('close')` + 2s SIGKILL fallback, so the
+  orphan was a side-effect of bash backgrounding the parent node process,
+  not a harness bug.
+- Pre-existing rendering issues not in this slice's scope but visible in
+  the captured snapshots: `tabs` renders empty; `multiple-choice` shows
+  only the prompt label, no choices. These are problems for
+  `wt/polish-tabs` and `wt/polish-multiplechoice-checkbox`, surfaced here
+  for orchestrator visibility.
+
+---
+
+### 20260509-202432 — phase3-multiplechoice-checkbox (auditlog fragment)
+
+Fragment: `knowledge/log/20260509-202432.phase3-multiplechoice-checkbox.auditlog.md`
+
+
+# Audit — Phase 3 MultipleChoice + CheckBox
+
+## Agent
+Claude Opus 4.7 sub-agent.
+
+## Worktree
+`.claude/worktrees/agent-a6c45b3d6d5f09d4c` on branch `worktree-agent-a6c45b3d6d5f09d4c`.
+
+## Lineage
+- Parent: orchestrator session 2026-05-09.
+- Plan: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` row `wt/polish-multiplechoice-checkbox`.
+- Conventions: `knowledge/20260509-145843.parallel-agent-log-fragments.knowledge.md`.
+
+## Action
+- Defined Material 3 design tokens (`--md-sys-color-*`, `--md-sys-elevation-*`) on `:root` in `src/a2glimpse-host.html` so the vendored Lit renderer's component CSS resolves. Without these, MultipleChoice rendered as an invisible (transparent) dropdown.
+- Added `test/fixtures/checkbox.jsonl` and registered `checkbox` in `test/visual.mjs` FIXTURES.
+- Added `display: block; margin-bottom: 12px;` host shims for `a2ui-multiplechoice` and `a2ui-checkbox`.
+- Re-baselined visual goldens locally; **NOT committed** (`test/__snapshots__/` excluded per instruction; orchestrator re-blesses).
+
+## Outcome
+PARTIAL.
+- MultipleChoice — FIXED. Dropdown header + chevron + bordered/elevated container now render. Options panel and chips also gain the right tokens for when they're shown (open dropdown / chips variant).
+- CheckBox — PARTIAL. Component renders, native checked/unchecked state is correct, but the labels are pushed off-axis because the vendored shadow CSS hard-codes `input { display: block; width: 100%; }` and `additionalStyles.CheckBox` only reaches the section wrapper. Two attempted host-side fixes (inline-flex auto-width; flex+nowrap) both regressed rather than fixed. Cleanly fixable only at the renderer layer (`::part` exposure or rule narrowing). Documented in the in-file comment and the devlog fragment.
+
+## Trust boundary
+Untouched. All edits are in the host-page wrapper outer `<style>` and in the host-entry `defaultTheme` object — both are first-party host code, not the vendored Lit IIFE. No `html`/`file`/`eval` reintroduction. The fix is pure CSS custom properties, no JS execution path changes.
+
+## Artifacts
+- `src/a2glimpse-host.html` — MD3 token `:root` block + light-DOM host shims for MC/CheckBox.
+- `test/fixtures/checkbox.jsonl` — new.
+- `test/visual.mjs` — `checkbox` added to FIXTURES.
+- `knowledge/log/20260509-202432.phase3-multiplechoice-checkbox.devlog.md` — devlog fragment.
+- (uncommitted) `test/__snapshots__/<hash>/multiple-choice.png`, `checkbox.png` — for orchestrator re-bless.
+
+## Notes
+- Initial attempt was performed in the wrong tree — I edited files at `/Users/brahn/src/github.com/bdmorin/glimpse-a2ui/...` directly instead of inside this worktree at `.claude/worktrees/agent-a6c45b3d6d5f09d4c/...`. The orchestrator stashed those orphan changes (`stash@{0}: phase3-orphans`) and reset main. Re-applied cleanly inside this worktree on second pass; the underlying diagnosis and fix did not change.
+- During iteration the visual harness saw mcporter snap-happy timeouts when peer Phase 3 worktrees were also running `test:visual:update` against the WindowServer concurrently. Symptom: 30s timeout on `snap-happy.TakeScreenshot windowId:N`. Resolution: retry once peer activity subsides; not a defect of this slice.
+- Renderer-host content hash will land at whatever the orchestrator's merged tree produces; the bake-in-snapshot-dir mechanism handles this cleanly.
+
+## Deferred (HARD_BLOCK candidates)
+1. **CheckBox label-on-same-row layout** — vendored shadow CSS owns the input width rule; needs renderer-side change.
+2. **`MultipleChoice.type` (spec) vs `.variant` (Lit prop)** — name mismatch; renderer-side resolver remap or property alias.
+3. **`MultipleChoice` with `selections.literalArray`** — `getCurrentSelections()` is missing that branch in the renderer; throws on `processor.getData(_, undefined, _)`. Renderer-side fix.
+
+All three are vendored-renderer concerns. They belong on a "renderer compliance suite + bug-fix backlog" track, not a host-page polish PR.
+
+---

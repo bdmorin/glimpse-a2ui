@@ -218,3 +218,606 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - The `Agent` runtime's session-start HEAD caching (Mode A) is a real issue worth filing upstream eventually. Out of scope for this work.
 
 ---
+
+## 2026-05-09 — Phase 3 component polish (per-slice fragments aggregated)
+
+The following entries were written by parallel worktree agents per the per-slice fragment convention (`knowledge/20260509-145843.parallel-agent-log-fragments.knowledge.md`). Aggregated here in dispatch order. Original fragment files preserved under `knowledge/log/`.
+
+---
+
+
+### 20260509-150227 — phase3-icon (devlog fragment)
+
+Fragment: `knowledge/log/20260509-150227.phase3-icon.devlog.md`
+
+
+# Phase 3 Icon — Devlog Fragment
+
+## Author
+
+Worktree agent dispatched from main session 2026-05-09. Branch
+`worktree-agent-ada653d20b46e2a26` off `main` @ `351775c`.
+
+## Context
+
+Phase 3 polish slice for the `Icon` component. Plan flags this as
+"likely DEFERRED — Material Symbols bundling." Read-required input:
+plan, log-fragments convention, retro callout ("Icon degrades without
+Material Symbols font availability"), and the host page.
+
+Goal per dispatch: either land a low-cost fix (system glyph fallback,
+text tag, or trivial font bundle) **or** DEFER with a concrete
+next-iteration plan, font-size numbers, and licensing. Bias was toward
+DEFERRED.
+
+## Did
+
+Investigation only — no code changes.
+
+1. Read the plan's Phase 3 row and the retro line on Icon. Plan
+   explicitly admits this slice is the textbook DEFERRED candidate.
+2. Located icon rendering in `src/a2glimpse-host.html`:
+   - Vendored CSS (line 6158): `.g-icon { font-family: "Material Symbols
+     Outlined", "Google Symbols"; font-display: optional; ... }`. No
+     `@font-face` declaration; the renderer assumes the font is
+     installed system-wide.
+   - Vendored renderer `renderIcon_fn` (line 8916):
+     `<span class="g-icon">${snake_case_name}</span>`. With no matching
+     font, the browser draws the snake-case ligature key as plain text.
+   - The styles are attached via Lit's `static styles = [...]`, which
+     compile to adopted stylesheets inside the component's shadow root.
+3. Tested the cascade-fix premise: a host-page `<style>` tag cannot
+   override `.g-icon`'s `font-family` once Lit has adopted its
+   shadow-scoped sheet. Document-level CSS does not pierce shadow DOM,
+   and Phase 3 ground rules forbid editing the vendored renderer.
+4. Tested the only other lever available from outside the shadow root:
+   `@font-face`. Font definitions ARE global — declaring `@font-face
+   { font-family: "Material Symbols Outlined"; src: ... }` in the host
+   document would satisfy the renderer's font-family lookup from inside
+   the shadow root.
+5. Sized that lever — see "Deferred" section below.
+6. Did not add an icon fixture. The renderer already produces a
+   visible-but-degraded state today (snake_case text), so a fixture
+   adds noise without unblocking a fix that this slice could land.
+   Logged as "open-next" rather than "did."
+
+## Considered, rejected
+
+- **Wrapper-CSS fallback that re-points `.g-icon` to a system font
+  (e.g. SF Symbols name).** Rejected: cannot reach into the shadow
+  root's adopted styles from the host page, and editing the vendored
+  renderer is out of scope. Even if reachable, SF Symbols are not a
+  ligature font keyed by Material's snake_case names, so a font swap
+  produces tofu, not glyphs.
+- **Mapping table from Material Symbol names to a Unicode glyph set
+  (e.g. emoji or `★`).** Rejected: would require either renderer edits
+  or a MutationObserver in the host page that walks every shadow root
+  and rewrites `.g-icon` text content. Both violate Phase 3's "host
+  theme/host-shim only" rule and add a runtime lookup path with no
+  test fixture demanding it. High cost, low value at POC.
+- **CSS `:not(supports(...))` pseudo-fallback.** Rejected: there is no
+  CSS query for "this @font-face URL 404'd," so no pure-CSS fallback
+  exists for the missing-font case.
+- **Bundle Material Symbols Outlined as base64 `@font-face` in
+  `a2glimpse-host.html`.** Considered seriously — this is the only
+  approach that actually produces the intended glyphs without touching
+  the renderer. Deferred (not rejected) per the bail rule. Numbers in
+  the AUDIT_LOG fragment.
+- **Calling current state "good enough" silently.** Rejected — the
+  retro explicitly named Icon as a degradation. Even if the visible
+  fallback (literal snake_case text) is functional, the gap between
+  spec-intended UX and observed UX needs a recorded plan, not silence.
+
+## Open / next
+
+- Icon stays in current degraded-but-visible state on `main`: the
+  ligature key (`arrow_forward`, `check_circle`, ...) renders as plain
+  text in the system fallback font. Not an empty box.
+- Productization path documented in AUDIT_LOG fragment under
+  "next-iteration plan." Picking it up requires a font-bundling
+  decision that exceeds Phase 3 polish scope.
+- No fixture added; if/when Icon is taken up, add
+  `test/fixtures/icon.jsonl` covering literal-name, path-bound, and
+  filled variants, and re-baseline goldens after any font bundle
+  lands.
+- No commit on this branch — worktree carries only these two log
+  fragments.
+
+## Deferred (prominent)
+
+This slice is **DEFERRED**. Rationale, cost numbers, and concrete
+next-iteration steps live in the matching auditlog fragment
+(`20260509-150227.phase3-icon.auditlog.md`). The short version:
+
+- Vendored renderer puts `.g-icon` styles inside shadow DOM. Host CSS
+  can't override font-family from outside.
+- Document-level `@font-face` is the only renderer-respecting lever.
+- Material Symbols Outlined variable woff2 is ~350–400 KB, Apache 2.0.
+  Inlining as base64 inflates the host HTML ~470 KB and is a
+  productization decision (cache strategy, license attribution, build
+  pipeline), not a polish CSS tweak.
+- Current observed behavior is already "visible degradation" (text
+  label), not "broken UI" (empty box). The cost/benefit doesn't pencil
+  out for this iteration.
+
+---
+
+### 20260509-150258 — phase3-usagehint-markdown (devlog fragment)
+
+Fragment: `knowledge/log/20260509-150258.phase3-usagehint-markdown.devlog.md`
+
+
+# Phase 3 — usageHint markdown rendering — DEFERRED
+
+## Author
+Claude Opus 4.7 (1M)
+
+## Context
+
+Phase 3 row `wt/polish-usagehint-markdown` from
+`knowledge/20260509-140000.polish-and-hardening-plan.plan.md`. The POC
+retrospective flagged that `Text` components with `usageHint: "h1".."h5"` /
+`"caption"` render the markdown markers (`### Card Title`, `*caption*`) as
+literal text instead of headings/italics. The plan flagged this as
+"likely DEFERRED — markdown engine."
+
+Goal: ship a tiny safe shim, OR defer with documented rationale.
+
+## Did
+
+Read the relevant slice of the vendored IIFE:
+
+- `src/a2glimpse-host.html:10388` — `MarkdownDirective` (the directive that
+  renders the markdown string).
+- `src/a2glimpse-host.html:10440` — `markdown2 = n4(Symbol("A2UIMarkdown"))`,
+  the Lit context symbol for injecting a renderer.
+- `src/a2glimpse-host.html:10446` — `Text` component, `markdownRenderer` is
+  consumed via `c4({ context: markdown2 })`.
+- `src/a2glimpse-host.html:10497-10518` — the `usageHint` switch that
+  prepends `#`/`##`/`###`/`####`/`#####`/`*…*` and hands the result to the
+  markdown directive.
+- `src/a2glimpse-host.html:10409-10431` — the directive's render method.
+
+Documented the trust-boundary picture and chose **DEFERRED**.
+
+## Findings (intelligence-discipline format)
+
+### Mechanism (VERIFIED, sourced from vendored IIFE)
+
+`Text.renderText_fn` always wraps the text with markdown markers when
+`usageHint ∈ {h1..h5, caption}` and pipes the result through the `markdown`
+directive. The directive's `render(value, markdownRenderer, …)` does:
+
+1. If a `markdownRenderer` was provided via Lit context, call it. The
+   returned string is wrapped in `o12(value2)` — `unsafeHTML`. The DOM gets
+   that string as raw HTML.
+2. Otherwise, attempt `await import("@a2ui/markdown-it")` at runtime and
+   call `renderMarkdown(value, …)`. Result also flows through `o12(...)`
+   (`unsafeHTML`).
+3. On any failure, return `<span class="no-markdown-renderer">${value}</span>`
+   — text-content escaped via Lit's default templating. **This is what we
+   currently see**: the dynamic import of `@a2ui/markdown-it` fails (no
+   module resolver in the WKWebView origin), the directive falls through to
+   the literal-span branch, and the user sees `### Card Title`.
+
+### Why this is structurally a "real dependency choice", not a CSS fix (LIKELY)
+
+To stop rendering literal markdown markers, *something* has to convert
+`### Card Title` into an `<h3>`. The renderer's *only* paths are
+`unsafeHTML(rendered)` — i.e. the produced HTML must be trusted enough to
+inject directly. There are exactly three plausible doors:
+
+1. **Provide a `markdownRenderer` via Lit context.** The context symbol
+   (`markdown2`) is created inside the IIFE's closure and is not exported.
+   No external code can subscribe a provider to it without editing the
+   vendored bundle. **Forbidden by AGENTS.md "Vendored renderer is read-only"
+   and the plan's "fix in `a2glimpse-host.html` theme/host-shim only — never
+   edit vendored Lit source" rule.**
+
+2. **Bundle `@a2ui/markdown-it` so the dynamic import resolves.** This is
+   the upstream-blessed path: Google ships `@a2ui/markdown-it` precisely as
+   the trusted renderer adjacent to the Lit bundle. Wiring it into the
+   single-file host page means either (a) inlining a built bundle of
+   `@a2ui/markdown-it` (~50–80 KB minified, plus its own deps) and shimming
+   `import("@a2ui/markdown-it")` to a local URL, or (b) switching the host
+   page from a single-file IIFE to a multi-file artifact. Both are more
+   than ~45 minutes of bundling work, both add a real runtime dependency
+   that needs the same trust analysis Google has already done upstream,
+   and (a) probably requires touching the vendored IIFE to redirect the
+   `import()` call — which is forbidden.
+
+3. **A "tiny regex shim" that converts a known subset (`# … #####`, `*…*`)
+   into safe HTML, exposed as a `markdownRenderer`.** This is the option
+   the prompt explicitly invited and it fails the trust-boundary test:
+   - The renderer's output is consumed via `unsafeHTML`. Whatever string
+     our shim returns is injected as raw HTML, with full HTML semantics,
+     into the page that holds the trust boundary. The shim is the trust
+     boundary for that string.
+   - Even if the shim only emits `<h1>…</h5>` and `<em>` tags, the
+     **input** is agent-controlled. To safely emit
+     `<h3>${userText}</h3>` the shim must HTML-escape `userText` (i.e.
+     escape `<`, `>`, `&`, `"`). Get the escape wrong (entity decoding
+     ordering, attribute-context confusion, surrogate pairs, U+0000) and
+     the shim is a script-injection vector across the very boundary
+     a2glimpse exists to protect.
+   - We cannot install the shim *without* touching the IIFE anyway,
+     because the context symbol is not exported (see option 1).
+
+So even the "small regex shim" path is structurally not in scope for this
+worktree under the current rules. It would require either:
+
+- Editing the vendored IIFE to expose the context symbol (or to register
+  a provider) — forbidden, and at that point we should just bundle
+  `@a2ui/markdown-it` instead.
+- A separate IIFE-level patch step in the build that re-exports the
+  context symbol. That's a build-system change, not a Phase 3 polish.
+
+### Competing hypothesis (UNCERTAIN)
+
+**Alternative**: maybe the renderer is supposed to be wired up by patching
+the host page to expose `markdown2` and a top-level `provideMarkdownRenderer()`
+hook is a one-time vendoring change, not a per-feature rule violation.
+*Counter*: AGENTS.md is unambiguous, and the plan reiterates "never edit
+vendored Lit source." Until Brian explicitly OKs a vendoring patch step,
+this hypothesis is out of scope.
+
+### Note on output severity
+
+The current "render literal markdown markers" failure is cosmetic, not a
+correctness/safety bug. The user sees `### Card Title` instead of an `<h3>`
+heading. Phase 4 (window chrome) and Phase 3 host-CSS work do not depend on
+this; visual-regression goldens already capture the literal-marker state.
+Deferring this does not block any other Phase 3 cluster.
+
+## Considered, rejected
+
+- **Inlining a 30-line regex shim and registering it via a host-shim
+  provider.** Rejected: the Lit context symbol is private to the IIFE; no
+  shim can subscribe without editing the vendored bundle, which is
+  forbidden. Even if registration were possible, the directive injects
+  the shim's output via `unsafeHTML`, recreating the exact HTML-injection
+  attack surface a2glimpse exists to remove. Implementing this safely
+  requires careful HTML-escaping of agent input plus an allowlist of
+  output tags — meaningfully more than 30 lines and meaningfully more
+  than 45 minutes to verify.
+
+- **CSS-only fix that hides `#` characters in headings.** Rejected: cannot
+  distinguish "agent put `#` in their text" from "renderer prepended `#`
+  for a heading hint." Would visually correct the demo and silently
+  corrupt any text that legitimately contains `#`.
+
+- **Replace the `markdown` directive with a host-page override that bypasses
+  the IIFE entirely.** Rejected: requires editing the IIFE to either
+  not-decorate the directive or expose it for replacement. Same forbidden
+  edit.
+
+## Open / next
+
+Pre-conditions for picking this up later:
+
+1. Decide whether `@a2ui/markdown-it` gets vendored alongside the Lit
+   bundle. If yes, this becomes a build/vendoring task — pull
+   `@a2ui/markdown-it` from Google's renderer repo, build a self-contained
+   bundle, register a one-line patch in the IIFE that points
+   `import("@a2ui/markdown-it")` at a `blob:` or inline URL. Trust
+   boundary unchanged: we trust upstream Google's renderer the same way
+   we trust upstream Google's Lit bundle.
+2. If we'd rather ship our own renderer: write an `a2glimpse-markdown-shim`
+   module that takes a markdown string, HTML-escapes the text content,
+   converts a fixed allowlist (`# … #####`, `**`, `*`, `_`) to a fixed
+   allowlist of tags, and provides a `markdownRenderer` via the Lit
+   context. Test against the OWASP XSS cheat sheet vector list. Track in
+   `knowledge/` as a real implementation plan, not a polish task.
+3. Either way, Phase 1 visual-regression goldens for `card-text.jsonl`
+   need to be re-blessed, with the rationale "h-prefix markers now render
+   as headings."
+
+Estimated effort to revisit: 1 session for option (1) if `@a2ui/markdown-it`
+bundles cleanly; 1–2 sessions for option (2) including the security
+analysis and vector tests.
+
+## Acceptance for the deferral
+
+- No code changes in this worktree.
+- AUDIT_LOG fragment outcome: `DEFERRED`.
+- This devlog fragment captures the security analysis the prompt asked for.
+
+---
+
+### 20260509-201101 — phase3-textfield-slider (devlog fragment)
+
+Fragment: `knowledge/log/20260509-201101.phase3-textfield-slider.devlog.md`
+
+
+# Phase 3 — TextField + Slider polish
+
+## Author
+dispatched agent (worktree `agent-a1d17a3f4500abd0c`) — Claude Opus 4.7 (1M)
+
+## Context
+Per `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` Phase 3, row
+`wt/polish-textfield-slider`. POC retro flagged inputs as "function but feel
+awkward in a bare host." Goal: TextField with real form-input affordance,
+Slider with a visible track + thumb. Vendored Lit IIFE remains read-only;
+all polish via `defaultTheme.additionalStyles` (documented extension hook,
+already in use for Button/Card/Text) and outer `<style>` for light-DOM host
+spacing.
+
+## Did
+- Added `test/fixtures/slider.jsonl` — Settings surface with two
+  literalNumber sliders (Volume=42, Brightness=75 over 0..100). Registered
+  in `test/visual.mjs` `FIXTURES`.
+- Added `additionalStyles.TextField`: 1px `#d0d7de` border, 6px radius,
+  8x10 padding, Canvas/CanvasText, inherited font, 1.4 line-height,
+  `box-sizing: border-box`, `width: 100%`. Inputs now look deliberate.
+- Added `additionalStyles.Slider`: `appearance: auto`, full-width, `6px 0`
+  margin, `accent-color: #0a84ff`, pointer cursor. Track + thumb visible
+  with brand accent.
+- Added outer `<style>` shim: `a2ui-textfield, a2ui-slider { display:
+  block; margin-bottom: 12px }` with `:last-child { margin-bottom: 0 }`.
+  Vertically-stacked fields breathe; no Column edit needed.
+- Verified visually: captured `text-field-form` and `slider` goldens at
+  intermediate renderer hash `75a2f7cc4026` and inspected them — TextField
+  shows padded/rounded/bordered inputs with proper inter-field spacing;
+  Slider shows brand-blue track with white thumb.
+
+## Considered, rejected
+- **Editing Lit shadow-DOM CSS via `::part()`:** vendored components don't
+  expose parts. Hard NO.
+- **Outer CSS targeting inner elements directly:** doesn't pierce shadow
+  DOM. Only CSS custom properties cross the boundary; additionalStyles is
+  the supported per-element hook.
+- **Bumping `accent-color` for slider:** kept it. A non-determinism
+  flicker appeared once across runs (one snapshot showed the system gray
+  default instead of brand blue) but later runs were stable. Not enough
+  signal to drop it; orchestrator can revisit if pixel-diff thrashes.
+- **Touching the Column component for inter-field spacing:** out of slice.
+  `a2ui-textfield`/`a2ui-slider` host margins are scoped to the components
+  this slice owns, no cross-cutting Column changes.
+- **Re-blessing all goldens at the final hash:** mid-session, the
+  worktree's host.html received parallel-slice edits (MD3 `:root` tokens
+  for MultipleChoice + `a2ui-multiplechoice` / `a2ui-checkbox` host
+  shims; FIXTURES gained a `checkbox` entry). Renderer hash shifted to
+  `e6821193bcf7`. Re-blessing under the merged hash is orchestrator
+  responsibility (Phase 5).
+
+## Open / next
+- **Slider label visibility (UNCERTAIN):** captured snapshot does not
+  appear to render the literalString labels ("Volume", "Brightness") above
+  the tracks — only the value spans (42, 75) below. Vendored
+  `renderField_fn3` does emit `<label>...${extractStringValue(this.label,
+  ...)}</label>` when `this.label` is truthy, and the schema accepts
+  StringValue. Did not chase root cause; bail rule respected (>1 session
+  budget on a single component). Possibilities: (a) label is rendering
+  invisible due to size/colour (label class is `empty()`), (b) label
+  property is not getting wired from the fixture, (c) label is rendering
+  as zero-width inline next to the value. Recommend a focused look in a
+  follow-up — small effort, but not in this slice's session budget.
+- **mcporter / snap-happy stability:** during the second half of the
+  session the screenshot path repeatedly timed out (30s) and a2glimpse
+  occasionally exited before `ready`. Not the harness's fault — both
+  prior fixtures captured fine earlier. Surfaced here per AGENTS.md
+  ("Timeouts are HARD_BLOCK, never OK"). Not a code-side block; orchestrator
+  can re-bless once snap-happy settles.
+- Stale goldens at `test/__snapshots__/75a2f7cc4026/` were captured-then-
+  deleted because the renderer hash moved before they could be the
+  canonical baseline. No goldens committed by this slice.
+
+## Smoke
+`npm test` PASS pre- and post-change. Visual harness verified manually for
+text-field-form + slider at intermediate hash; full re-bless deferred to
+orchestrator.
+
+---
+
+### 20260509-201417 — phase3-tabs (devlog fragment)
+
+Fragment: `knowledge/log/20260509-201417.phase3-tabs.devlog.md`
+
+
+# Phase 3 — Tabs polish
+
+## Author
+Claude Opus 4.7 (orchestrator-dispatched sub-agent).
+
+## Context
+Phase 3 plan row `wt/polish-tabs`. Existing tabs golden at renderer hash
+`936f54cfb1c3` was effectively blank (2523 bytes, all-white). Goal: diagnose,
+fix in wrapper if possible.
+
+## Did
+- Confirmed blank render by re-running `npm run test:visual:update --only tabs`
+  and viewing PNG — fully white, no chrome, no tabs, no content.
+- Walked the renderer IIFE: `Tabs.render()` reads
+  `this.theme.components.Tabs.element`. The vendored `defaultTheme` for `Tabs`
+  is `{ container: empty(), controls: { all: empty(), selected: empty() } }` —
+  it has NO `element` key.
+- The renderer pipes `theme.components.Tabs.element` (= undefined) into
+  lit-html's `classMap`, whose `render()` calls `Object.keys(t)`. That throws
+  on undefined. The unhandled rejection aborts Lit's update before the
+  shadow-DOM commit, leaving `<a2ui-tabs>` with an empty shadow root. Hence
+  the blank capture.
+- Verified by adding a temporary diagnostic listener (`window.error`,
+  `unhandledrejection`, DOM dump) ahead of the IIFE. Captured stack landed at
+  `classMap.render` -> `Tabs.render` -> Root.update. DOM dump showed
+  `a2ui-tabs.shadow: <!---->` (empty) but light-DOM children present and
+  correctly slotted.
+- Fix is in the wrapper, not the IIFE. After `customElements.whenDefined`
+  resolves for `a2ui-tabs`, wrap `prototype.update` to ensure
+  `this.theme.components.Tabs` has the missing keys (`element`, and
+  defensively `controls.all` / `controls.selected`) just before Lit calls
+  the original `update`. Mutates the live theme object in place; same
+  reference is held by every consumer, so the fix is one-shot per
+  ContextProvider.
+- Smoke (`npm test`): green pre- and post-change.
+- Visual harness pass at new renderer hash `e6f39756bf61` for all 6 fixtures
+  (`button-only`, `card-text`, `modal`, `multiple-choice`, `text-field-form`,
+  `tabs`) — three back-to-back: update -> compare run shows 0–8 pixel diffs
+  (well under 0.1% threshold).
+
+## Considered + rejected
+- Editing the IIFE to fix `defaultTheme`. Rejected — vendored read-only.
+- Providing a parent ContextProvider above `<a2glimpse-app>`. Rejected —
+  the app's own provider is closer to consumers, would shadow ours.
+- Subclassing `A2GlimpseApp` to inject a patched theme. Rejected — would
+  require redefining the custom element after the IIFE registered it.
+- Modifying `test/fixtures/tabs.jsonl`. Rejected — the fixture is a
+  textbook `Tabs` payload and matches the v0.8 schema; the bug was in the
+  renderer's default theme, not in the fixture.
+
+## Open / next
+- Tabs render functional but unstyled (native browser `<button>` look). Per
+  plan, deeper visual polish (padding, rounded selected state, hover/focus
+  consistent with Button's `additionalStyles`) is in scope for a follow-up
+  pass. Not blocking; one session was the bail rule and structural fix
+  consumed it. Recommend a `wt/polish-tabs-visual` follow-up that adds
+  `additionalStyles.Tabs` (and Tabs-button styling) to the patch script
+  alongside the missing-keys fix.
+- Goldens NOT committed per prompt instruction. Renderer hash bumped from
+  `936f54cfb1c3` to `e6f39756bf61` due to wrapper script addition; the
+  orchestrator can decide whether to re-bless and commit the new directory
+  or to keep the previous (now-stale) goldens for archaeology.
+
+---
+
+### 20260509-201935 — phase3-button-card-text (devlog fragment)
+
+Fragment: `knowledge/log/20260509-201935.phase3-button-card-text.devlog.md`
+
+
+# Phase 3 — Button + Card + Text polish
+
+## Author
+Claude Opus 4.7, dispatched as Phase 3 worktree agent for `wt/polish-button-card-text`.
+
+## Context
+Phase 2 hardening landed. Fresh visual goldens existed but the rendered surface looked
+like a smoke test — Button hugged the top-left of the WKWebView, Card had no breathing
+room from the chrome, and `Text` `usageHint:"h3"` rendered the literal `### ` markdown
+markers because the host has no markdown engine wired in (POC retrospective Visual
+Debugging Findings). Worktree branched from `main@351775c` and was rebased forward
+onto `main@05ad47e` before any edits, then a `wt/polish-button-card-text` branch was
+cut.
+
+## Did
+1. Rebased worktree onto current main (post-Phase-2 ready-signal merge), created
+   `wt/polish-button-card-text`.
+2. Inspected current goldens manually — confirmed the issues called out in the POC
+   retro: zero surface padding, no card visual hierarchy, literal markdown markers
+   in heading-hinted text.
+3. Edited `src/a2glimpse-host.html` `<head>` style block only (vendored Lit IIFE
+   from line ~22 onward untouched). Changes:
+   - Set host typography (Apple-system stack, 14px / 1.45 line-height) on body so
+     all renderer components inherit.
+   - Tuned the renderer's Material Design tokens (`--md-sys-color-primary`,
+     `--md-sys-color-outline*`, `--md-sys-color-surface*`, `--md-sys-elevation-*`)
+     to a coherent neutral palette consumed across the shadow-DOM components.
+   - Added `body { padding: 20px 24px; box-sizing: border-box; overflow: hidden; }`
+     — this is the only knob that meaningfully repositioned content (padding on
+     `a2glimpse-app` had no visible effect because the inner `a2ui-surface`'s
+     :host display semantics swallowed it). `overflow: hidden` was needed to
+     suppress a permanent body-level vertical scrollbar caused by the renderer's
+     Surface/Column `height: 100%` cascade interacting with body padding —
+     internal `Card` / `Column` shadow trees have their own `overflow: auto`,
+     so suppressing body scroll doesn't lose actual content.
+   - Added `a2ui-text[usage-hint="h1..h4|caption"] { font-size/weight }` rules.
+     `usageHint` is reflected as `usage-hint` on the host element (verified at
+     line 10512 of the IIFE), so attribute selectors work. Heading typography
+     inherits across the shadow boundary; the renderer's own
+     `additionalStyles.Text.h3 = { fontSize: "18px" }` already applied a
+     small bump, this layer reinforces and adds h4/caption.
+   - `a2ui-card { margin: 4px 0; }` for outer breathing room (margin doesn't
+     fight :host display).
+4. Iterated 6 update→inspect cycles. One earlier attempt set `display: block`
+   on `a2ui-column` — that overrode the renderer's `:host { display: flex }`
+   (external selectors beat `:host`) and made the button vanish from
+   button-only. Reverted.
+5. Verified other fixtures (modal, multiple-choice, text-field-form, tabs)
+   still render — they actually benefit from the same wrapper-level padding.
+6. `npm test` (smoke) green; `npm run test:visual` matched the locally-blessed
+   goldens (≤0.03% diff across all six).
+
+## Considered, rejected
+- **Bundling a markdown engine to render `### Card Title` as an h3 tag** —
+  DEFERRED. The renderer has a `markdown` context slot (`markdown2` symbol
+  near IIFE line 10507) but no engine wired in by default. Bundling marked /
+  micromark inside the trusted host would expand the trust boundary surface.
+  Out of scope for this slice; should be Phase 3's `wt/polish-usagehint-markdown`.
+- **Padding `a2ui-surface` directly** — empirically ineffective, and an earlier
+  attempt at `a2ui-surface { display: block }` would have overridden the
+  renderer's :host display. Body-level padding works without touching the
+  renderer's layout contracts.
+- **`a2ui-column { display: block }`** — same issue. Reverted.
+- **CSS custom properties for typescale** — the renderer uses `theme.components.Text[usageHint]`
+  → string-class merge, applied via Lit `classMap`; no `--md-sys-typescale-*`
+  tokens are exposed. Direct attribute-selector styling on the host element
+  (with inherited font-size crossing the shadow boundary) was the simpler hit.
+
+## Open / next
+- **DEFERRED**: `Text` `usageHint` markdown rendering. Title still shows
+  literal `### `. Estimated effort to revisit: ~0.5–1 session — pick a
+  small markdown lib (micromark-core 30 KB), wire it via the renderer's
+  `markdown` context (line 10507), and convince ourselves the bundle still
+  passes the trust-boundary smell test (no `eval`/`Function`/dynamic import).
+  Tracked under Phase 3 `wt/polish-usagehint-markdown`.
+- One pre-existing rendering issue not introduced by this slice but visible
+  in goldens: `multiple-choice` and `tabs` fixtures render mostly empty
+  (only the prompt label shows for multiple-choice; tabs is blank). These
+  are in scope for `wt/polish-multiplechoice-checkbox` and `wt/polish-tabs`,
+  not this slice — flagging for the orchestrator.
+- Body padding chose 20×24; could be tightened or made responsive via
+  `clamp()` once we know the typical surface size. Not blocking.
+
+## Trust boundary
+No changes to stdin/stdout protocol. No new public commands. Vendored Lit
+IIFE untouched (verified by `git diff src/a2glimpse-host.html` — only the
+top-of-file `<style>` block was edited). No `html` / `file` / `eval`
+reintroduced.
+
+---
+
+### 20260509-202432 — phase3-multiplechoice-checkbox (devlog fragment)
+
+Fragment: `knowledge/log/20260509-202432.phase3-multiplechoice-checkbox.devlog.md`
+
+
+# Phase 3 — MultipleChoice + CheckBox polish
+
+## Author
+Claude Opus 4.7 (sub-agent), under Brian's orchestrator session.
+
+## Context
+POC retro flagged MultipleChoice as "renders thinly... options not visible." Phase 3 worktree task: diagnose, fix in wrapper CSS, leave the vendored Lit IIFE alone. CheckBox had no fixture before this slice.
+
+## Did
+1. **Diagnosed MultipleChoice invisibility.** The vendored Lit component CSS for `a2ui-multiplechoice` (and several other v0.8 components) references Material 3 design tokens — `--md-sys-color-surface`, `--md-sys-color-primary`, `--md-sys-color-outline-variant`, `--md-sys-elevation-level1`, etc. These tokens are **not defined anywhere in the IIFE or the host page**. With the tokens unresolved, the dropdown header rendered with transparent background, no borders, and an invisible chevron — which is why the original golden showed only the surrounding `Pick your favorites:` Text label and nothing else.
+2. **Fixed at the wrapper layer.** Added a `:root { --md-sys-color-* / --md-sys-elevation-* }` block to the host-page outer `<style>`. CSS custom properties pierce shadow-DOM boundaries when referenced via `var()` from inside, so the vendored CSS now resolves. No IIFE edits.
+3. **Added CheckBox fixture.** `test/fixtures/checkbox.jsonl` with two CheckBoxes — one bound to `/agree` via path (initial false from dataModelUpdate) and one with `literalBoolean: true`. Registered `checkbox` in `test/visual.mjs` FIXTURES.
+4. **Light-DOM host shims** for `a2ui-multiplechoice` and `a2ui-checkbox`: `display: block; margin-bottom: 12px;` to give consistent vertical rhythm in Column layouts. Same shape as the existing TextField/Slider shim.
+5. **Re-baselined goldens** at the new renderer-host content hash. Did NOT commit `test/__snapshots__/` per instructions; orchestrator re-blesses cumulatively.
+
+## Considered, rejected
+- **Editing the vendored Lit IIFE** to add the missing tokens or fix the CheckBox `input { width: 100% }` rule. Rejected: explicit constraint, trust-boundary surface area.
+- **Substituting the `MultipleChoice.type` field with `variant`** in the fixture. The schema validates `type: 'checkbox' | 'chips'` but the Lit component reads `.variant` — so the field is silently dropped and the component falls through to its `variant = "checkbox"` default. This is a renderer-side schema/property name mismatch, not something the host page can fix. Filed under `Open / next` rather than papering over.
+- **Adding `additionalStyles.CheckBox` to make the section flex.** Tried two variants (`inline-flex` with `width:auto`, then `flex` with `whiteSpace:nowrap`). Both fail because the vendored shadow CSS rule `input { display: block; width: 100%; }` lives inside the CheckBox shadow root and outranks anything we put on the section wrapper from outside. Without a `::part` exposure or a renderer-side change, the input keeps stretching and shoves the label off-axis. Reverted; left an in-file comment near the empty `additionalStyles.CheckBox` slot explaining why.
+
+## Open / next
+- **HARD_BLOCK on CheckBox label-rendering polish.** The native `<input>` stretches to 100% of its `<section>` because the rule is in shadow-DOM CSS. Wrapper-CSS workaround does not exist; `theme.additionalStyles.CheckBox` only reaches the section wrapper. Fix path: vendored renderer change (preferred — narrow `width: 100%` to `display: block; width: auto;` for the input, or expose a `::part` for the input element). Current state: checkbox renders, native check icon visible, labels rendered but pushed off the visible row.
+- **`MultipleChoice.type` vs `.variant` rename.** Schema and Lit element disagree; the spec field name is `type`. Either the resolver should remap `type → variant` before passing to the Lit element, or the Lit element should accept both. Renderer-side fix.
+- **MultipleChoice `selections.literalArray: []`** branch: `getCurrentSelections()` only handles `Array.isArray(this.selections)` and `this.selections.path`; the `literalArray` form is unhandled and would call `processor.getData(component, undefined, ...)`. Fixture now uses `selections.path` form to sidestep, but the spec-level `literalArray` form is broken in the vendored renderer. Renderer-side fix.
+
+## Files touched
+- `src/a2glimpse-host.html` — added MD3 token `:root` block and host-shim CSS; added a comment placeholder where `additionalStyles.CheckBox` would live (reasoning + deferral note).
+- `test/fixtures/checkbox.jsonl` — new fixture.
+- `test/visual.mjs` — registered `checkbox` in `FIXTURES`.
+
+## Verification
+- `npm test` — green (smoke unaffected).
+- `npm run test:visual:update` — all 7 fixtures snap successfully at renderer hash `275347c0085c` (final hash will shift if the host file is touched again pre-merge).
+- MultipleChoice golden: dropdown header `Select items` with chevron renders cleanly inside a bordered, elevated container — node text was previously the only thing visible.
+- CheckBox golden: 2 checkboxes render with correct checked/unchecked state. Labels deferred (see HARD_BLOCK above).
+
+## Bail-rule note
+Stayed under the >1-session bail. Diagnosis, MD3-token fix, and CheckBox fixture/shim landed cleanly inside the time budget. Stopped at the CheckBox label-layout problem after two failed `additionalStyles` attempts — that's renderer-internal, not wrapper-CSS-fixable.
+
+---
