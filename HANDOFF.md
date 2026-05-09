@@ -26,24 +26,53 @@ The cluster the original plan deliberately punted, still the right next bet. All
 
 **Pre-conditions:** None — could ship today on top of current Phase 1-4 work.
 
-#### A2. MCP Server Wrapper
+#### A2. MCP Bridge — `a2glimpse-mcp` over `mcporter daemon`
 
-**What:** A long-lived process that holds `a2glimpse` alive across MCP tool calls and exposes operations:
-- `a2ui.surface_update` (forward an A2UI v0.8 message)
-- `a2ui.data_model_update`
-- `a2ui.begin_rendering`
-- `a2ui.delete_surface`
-- `a2ui.await_action` (blocking; returns the next userAction or times out)
-- `a2ui.close`
-- `a2ui.get_info`
+**Architecture (refined 2026-05-09 after re-reading mcporter docs):** Lifetime management is handled by **mcporter's daemon mode** (`lifecycle: "keep-alive"` in the server definition — see `/Users/brahn/src/github.com/openclaw/mcporter/docs/daemon.md`). What we build is a **thin stateless-by-MCP-protocol, stateful-by-child-process MCP server** — no socket management, no PID files, no restart logic. mcporter's daemon owns those concerns and is shared across agents.
 
-**Why this shape:** MCP tool calls are stateless; agent-loop UX requires a long-lived window. The wrapper bridges that. Action correlation (mapping `await_action` calls to incoming `userAction` events) lives here, not in the binary.
+**Layering, end-to-end:**
 
-**Trust-boundary stance:** The wrapper IS the trust boundary for MCP-driven flows. It must validate every A2UI message against the v0.8 schema before forwarding to `a2glimpse`'s stdin. Reject `html` / `file` / `eval` shapes loudly.
+```
+agent (any: Claude Code, Codex, Gemini, Cursor, …)
+  └─ shells out to → mcporter call a2glimpse.<tool>
+       └─ proxied through → mcporter daemon (per-config, auto-spawned)
+            └─ holds warm stdio transport to → a2glimpse-mcp (the bridge we build)
+                 └─ owns child process → a2glimpse (the binary that already exists)
+                      └─ in-process → WKWebView with A2UI v0.8 renderer
+```
 
-**Effort estimate:** 2-3 sessions. ~150-300 lines of TypeScript per the original plan, plus tests, plus an MCP manifest, plus a configuration story for which a2glimpse binary to use.
+**What `a2glimpse-mcp` does:** Tiny stdio MCP server. On MCP `initialize`, spawns `a2glimpse` as a child and keeps it alive for the daemon's session. Exposes MCP tools:
 
-**Pre-conditions:** A1 (so the MCP tool surface mirrors the documented patterns).
+- `a2glimpse.surface_update` (forward A2UI v0.8 surfaceUpdate)
+- `a2glimpse.data_model_update`
+- `a2glimpse.begin_rendering`
+- `a2glimpse.delete_surface`
+- `a2glimpse.await_action(timeoutMs?)` — blocks reading child stdout until next `userAction`, returns it
+- `a2glimpse.close`
+- `a2glimpse.get_info`
+
+Action correlation (matching `await_action` to incoming `userAction` events) lives in the bridge, not in `a2glimpse`.
+
+**Trust-boundary stance (unchanged):** The bridge IS the trust boundary for MCP-driven flows. It must validate every A2UI message against the v0.8 schema before forwarding to the child's stdin. Reject `html` / `file` / `eval` shapes loudly. mcporter sees the calls but doesn't know A2UI semantics — schema validation has to live here.
+
+**mcporter config (user-side):**
+
+```json
+"a2glimpse": {
+  "command": "a2glimpse-mcp",
+  "lifecycle": "keep-alive"
+}
+```
+
+That's the entire registration story. Native MCP server count remains zero — same skill-as-MCP-shim pattern as snap-happy (see `/Users/brahn/src/gitlab.com/bdmorin/obsidian/_raw/20260509-184000.snap-happy-mcporter-skill-shim.retrospective.md`), just with a stateful keep-alive server underneath.
+
+**Why this shape beats the original "MCP Server Wrapper" framing:** That framing implied building a session manager from scratch (FIFO/socket lifecycle, restart logic, per-session id management). All of that already exists in mcporter daemon — we'd be reinventing it. By delegating long-lived-host duties to mcporter, the bridge stays small, single-purpose, and protocol-translation-only.
+
+**Cross-agent portability:** Any agent that can shell out to `mcporter call …` can drive this. No hooks, no Claude-Code-specific MCP plugin manifests. Skill file (A3) is Claude-Code-shaped, but the *capability* is agent-agnostic.
+
+**Effort estimate (revised):** 1-2 sessions. ~150 lines of TypeScript for the bridge (MCP server scaffolding from the official SDK + a child-process manager + per-tool JSONL translation + schema validation), plus tests against a fake `a2glimpse` stdin/stdout, plus a tiny README on the mcporter config snippet. Down from the original 2-3 because lifetime management drops out.
+
+**Pre-conditions:** A1 (so the bridge's tool surface mirrors the documented patterns) and `mcporter` installed system-wide (already true on Brian's host).
 
 #### A3. Agent Skill
 
