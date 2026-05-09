@@ -69,3 +69,16 @@ Never edit past entries. Correct with a follow-up entry that references the prio
 **Notes:** Trust boundary intact — no new public stdin commands, no new `glimpse.*` bridge functions. The vendored Lit IIFE in `a2glimpse-host.html` (script block from line ~11 onward) was not touched; only the wrapper head/body region got CSS additions. Stability runs: worst-run noise 0.0052%, best 0.0000% — fully clear of the 0.1% threshold. The iTerm-capture race from the prior session did not reproduce; window-size verification was added defensively per the brief.
 
 ---
+
+## 2026-05-09 ~19:40 — Phase 2b: test-only command gating
+**Agent:** Claude Opus 4.7 (1M ctx), worktree sub-agent
+**Worktree:** `worktree-agent-a646e99e1c9b45bba` (rebased onto `main` @ 096d310 to pick up Phase 1)
+**Lineage:** Phase 2b of `knowledge/20260509-140000.polish-and-hardening-plan.plan.md`; row `wt/harden-test-gating`. Concern originates in `knowledge/20260509-130112.poc-retrospective.retrospective.md`.
+**Action:** Gate `__test-click` synthetic-click path in `handleCommand` behind `config.testMode` (i.e. `--test-mode` flag or `A2GLIMPSE_TEST_MODE=1` env). Add `testMode` option to Node wrapper `open()`. Update smoke test to opt in.
+**Outcome:** OK
+**Artifacts:**
+- `src/a2glimpse.swift` (gate added in `__test-click` case with rationale comment)
+- `src/a2glimpse.mjs` (new `testMode` option in `open()`)
+- `test/test.mjs` (passes `testMode: true`)
+- `knowledge/DEV_LOG.md` (entry 2026-05-09 ~19:40)
+**Notes:** Audit confirmed `__test-click` is the only test-only command in the dispatcher. Default-dispatch rejection emits the unknown-command error shape — no path disclosure. Acceptance: `npm test` 7/7 ✓; `npm run test:visual` 6/6 ✓ (worst diff 0.0052%, threshold 0.1%); manual rejection verified with `(printf '{"type":"__test-click","id":"button"}\n{"type":"close"}\n'; sleep 1) | ./src/a2glimpse --hidden --title rejection-test` → `{"error":{"message":"Unknown command type: __test-click"}}`. Trust-boundary grep clean: no `"html"`/`"file"`/`"eval"` cases reintroduced.
