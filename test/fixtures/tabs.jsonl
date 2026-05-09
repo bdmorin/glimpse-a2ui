@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Tabs":{"tabItems":[{"title":{"literalString":"One"},"child":"tab1"},{"title":{"literalString":"Two"},"child":"tab2"},{"title":{"literalString":"Three"},"child":"tab3"}]}}},{"id":"tab1","component":{"Text":{"text":{"literalString":"Contents of tab one."}}}},{"id":"tab2","component":{"Text":{"text":{"literalString":"Contents of tab two."}}}},{"id":"tab3","component":{"Text":{"text":{"literalString":"Contents of tab three."}}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}

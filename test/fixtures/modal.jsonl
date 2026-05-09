@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Column":{"children":{"explicitList":["intro","modal"]}}}},{"id":"intro","component":{"Text":{"text":{"literalString":"Modal trigger sample"}}}},{"id":"modal","component":{"Modal":{"entryPointChild":"open_btn","contentChild":"modal_body"}}},{"id":"open_btn_label","component":{"Text":{"text":{"literalString":"Open Modal"}}}},{"id":"open_btn","component":{"Button":{"child":"open_btn_label","action":{"name":"vr.modal.open"}}}},{"id":"modal_body","component":{"Text":{"text":{"literalString":"Hi from inside the modal."}}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}

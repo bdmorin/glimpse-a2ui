@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Column":{"children":{"explicitList":["btn"]}}}},{"id":"btn_label","component":{"Text":{"text":{"literalString":"Confirm"}}}},{"id":"btn","component":{"Button":{"child":"btn_label","primary":true,"action":{"name":"vr.button","context":[{"key":"answer","value":{"literalString":"yes"}}]}}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}
