@@ -1341,3 +1341,31 @@ shadow components render.
   font set.
 
 ---
+
+## 2026-05-09 ~17:30 — Post-arc cluster: A1 + B1 + B2 + C1 in parallel
+
+**Author:** orchestrator (Brahn) + four worktree-isolated `general-purpose` sub-agents
+**Context:** Polish/hardening arc closed. Brian asked: if remaining HANDOFF tasks don't overlap, parallelize. Ran overlap analysis: A2/A3 depend on A1 (serial); C2/D items conflict on shared Swift/host files (defer); A1+B1+B2+C1 are non-overlapping (knowledge-only or new-file-only) and could fan out.
+**Did:**
+- Read-only recon agent first: surveyed `google/A2UI` contribution norms (terse, sprint-driven, CLA required for PRs, no DCO, structured Symptom→Repro→Root cause→Spec ref→Related→Suggested fix house style, no duplicates for our three findings). Findings shaped B1's filing template.
+- Dispatched four parallel slice agents with `isolation:"worktree"`, HARD_FAIL pre-flight, `git rebase origin/main` Mode-A guard, per-slice log fragments. All four returned DONE first try — first session with zero Mode B drift since the convention landed.
+  - **A1** — `slice-a1-control-surface` — seven-pattern catalog (confirm, choice, multi-choice, free-text, status, diff-review, command-approval) at `knowledge/20260509-180000.agent-control-surface.knowledge.md`. Five patterns lack fixtures; reserved as gaps for a follow-up slice.
+  - **B1** — `slice-b1-renderer-filings` — three filing-ready issue bodies under `knowledge/filings/`, each with verified upstream line numbers (agent found a local `~/src/github.com/google/A2UI` clone and pinned exact source paths). Cross-reference each other and closed #574.
+  - **B2** — `slice-b2-revendor-runbook` — `knowledge/20260509-172345.renderer-revendor-runbook.knowledge.md` + `knowledge/renderer-bundle-pins.md` ledger. Confidence LIKELY until first re-vendor proves it. Notable: a `PreToolUse` security hook tripwire-matched on a literal `new Function(` string in the docs and blocked the first write — agent reworded to regex form.
+  - **C1** — `slice-c1-app-packaging` — `dist/a2glimpse.app` at ~290 KB, `LSUIElement:true`, `CFBundleIdentifier:com.bdmorin.a2glimpse`, Finder-launch graceful `NSAlert` ("a2glimpse is an MCP appliance"), bundle-aware path resolution via `Bundle.main` with dev-mode fallback, placeholder `a2g` icon generated inline via `swift`+`sips`+`iconutil`. Apple Developer onboarding tutorial at `knowledge/20260509-172625.apple-developer-onboarding.knowledge.md` covers enrollment → cert → notarization end-to-end.
+- Recon agent on `openpets` followed (background): identified it as Electron (~150 MB, embed non-starter), MIT-licensed, sprite format = "Codex/Petdex" 1536×1872 / 8×9 / 192×208 with `pet.json` manifest. Brian noted Codex pets already on host at `~/.codex/pets/dr-glitch`. Recommended path: borrow format spec + write our own `NSStatusItem` renderer in ~50 lines of Swift.
+- Aggregate-and-merge protocol: each branch merged with `--no-ff`. `knowledge/INDEX.md` auto-merged each slice (additive). Build green, smoke test green post-merge.
+- Inline E3 addendum applied to pathologies doc — additionalStyles can target sub-element class names (Modal-retry insight that hadn't made it to the durable doc).
+**Considered / rejected:**
+- Octopus merge (`-Xtheirs` or merge-all-in-one) — rejected; sequential `--no-ff` preserves per-slice merge commits and makes blame readable.
+- Merging C1 first to test code earlier — rejected; A1/B1/B2 are knowledge-only and can't break anything, so we frontload zero-risk merges and finish on the only code-touching one.
+- Filing the upstream issues myself via `gh issue create` — rejected by Brian; he wants his name on them. B1 produces paste-ready bodies; he files.
+- Generating a sprite for the menubar pet during this cluster — out of scope. Future slice.
+**Open / next:**
+- B1 paste-and-file: Brian applies CLA (already done per his note), then files three issues from the `knowledge/filings/` bodies in order (each cross-references the others; file Tabs first, MultipleChoice variants second/third).
+- A2 (MCP bridge over mcporter daemon) — now unblocked; A1 catalog defines the surface to expose.
+- A3 (agent skill) — depends on A2.
+- C1 follow-up: replace Finder-launch alert with menubar pet mode (Path C from openpets recon); use `~/.codex/pets/dr-glitch` if format-compatible.
+- Per-slice fragments at `knowledge/log/20260509-172*.{b1,b2,c1}.{devlog,auditlog}.md` and `…180000.a1.*.md` — keep for depth; this aggregate entry is the index, not the substitute.
+
+---

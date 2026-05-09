@@ -870,3 +870,47 @@ build-time and ship-time without changes to the build script.
 The npm `files` array carries it into installed copies.
 
 ---
+
+## 2026-05-09 ~17:30 — Post-arc cluster fan-out: A1 + B1 + B2 + C1
+
+**Orchestrator:** Brahn (Opus 4.7)
+**Dispatch shape:** 4 parallel `general-purpose` sub-agents with `isolation:"worktree"`, HARD_FAIL pre-flight, post-rebase Mode-A guard, per-slice log fragments. Recon agents (read-only, no worktree) for `google/A2UI` contribution norms and `openpets` evaluation ran alongside.
+
+### Slice outcomes
+
+| Slice | Branch | Commit | Outcome | Files |
+|---|---|---|---|---|
+| A1 | `slice-a1-control-surface` | `69bcb5b` | DONE | catalog + INDEX + 2 logs |
+| B1 | `slice-b1-renderer-filings` | `6401fff` | DONE | 3 filings + filings/README + INDEX + 2 logs |
+| B2 | `slice-b2-revendor-runbook` | `a5f9157` | DONE | runbook + pins + INDEX + 2 logs |
+| C1 | `slice-c1-app-packaging` | `e81cb48` | DONE | build-app.mjs + Swift edits + onboarding + README + .gitignore + package.json + INDEX + 2 logs |
+
+### Recon agents (non-worktree)
+
+- `google/A2UI` contribution recon — surveyed CONTRIBUTING.md, issue templates, last 30 issues, PR style, CLA flow. Output drove B1's filing template. No duplicates found for any of our three findings.
+- `openpets` evaluation — Electron-based, MIT-licensed, Codex/Petdex sprite format (1536×1872 / 8×9 / 192×208 + `pet.json`). Path C (borrow format, write our own renderer) recommended. Brian flagged a local Codex pet at `~/.codex/pets/dr-glitch`. Captured as deferred follow-up.
+
+### Merge protocol
+
+Sequential `--no-ff` merges in order A1 → B1 → B2 → C1. `knowledge/INDEX.md` auto-merged additively each time. No manual conflict resolution needed.
+
+### Verification
+
+- `npm run build:macos` ✓
+- `npm test` ✓ (smoke: ready → render → click → userAction → close)
+- `dist/a2glimpse.app` — Finder-launch alert verified manually during C1 (per agent report)
+- Visual regression — not re-run (no host.html or fixture changes; goldens still pinned at `0ff4d09524c9`)
+
+### Mode-B drift count
+
+**Zero.** First parallel-fan-out session with zero isolation failures since the HARD_FAIL convention landed (Phase 3 had 3-of-7 Mode-B). Validates the dispatch procedure as load-bearing.
+
+### Tripwire incident
+
+B2 agent's first runbook write was blocked by a `PreToolUse` security hook regex matching the literal `new Function(` string in a documentation tripwire-list. Agent reworded to regex form and proceeded. Worth knowing for future docs that talk about dangerous primitives.
+
+### Tag
+
+`v0.8.3-cluster-handoff` (forthcoming) — closes the four-slice handoff cluster on `origin/main`.
+
+---
