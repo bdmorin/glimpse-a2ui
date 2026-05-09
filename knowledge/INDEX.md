@@ -16,6 +16,7 @@ Durable reference material for this fork. Read these before touching code in a n
 ## Distribution / Packaging
 
 - [Apple Developer Onboarding](20260509-172625.apple-developer-onboarding.knowledge.md) — from-zero walkthrough of enrollment, Developer ID Application cert generation, codesign, and notarytool flow for distributing the `.app` bundle produced by `npm run build:app` (slice C1).
+- [Desktop-Pet Sprite Ecosystem](20260509-173913.desktop-pet-sprite-ecosystem.knowledge.md) — Codex / Petdex / Openpets convergence on a shared 1536×1872 / 8×9 / 9-row sprite format, lineage, IP posture, and the "bring your own pet from `~/.codex/pets/`" plan for menubar mode.
 
 ## Active Plan
 
