@@ -119,8 +119,12 @@ func anchorPosition(mouse: NSPoint, windowSize: NSSize, anchor: String) -> NSPoi
 // MARK: - CLI Config
 
 struct Config {
-    var width: Int = 800
-    var height: Int = 600
+    // Default surface size sized for A2UI appliance content (single Card, modal,
+    // or compact form). 800x600 was inherited from upstream Glimpse where the
+    // surface was arbitrary HTML; A2UI surfaces are typically denser and
+    // smaller. Callers can still override with --width/--height. Phase 4.
+    var width: Int = 480
+    var height: Int = 320
     var title: String = "a2glimpse"
     var frameless: Bool = false
     var floating: Bool = false
@@ -423,6 +427,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         window.title = config.title
         if config.frameless {
             window.isMovableByWindowBackground = true
+        }
+        // Unified macOS titlebar — production mode only.
+        // Hides the title strip and lets the WKWebView content extend up to
+        // where the traffic lights sit, matching the modern macOS appliance
+        // look. Gated OFF in --test-mode (test-mode keeps standard chrome for
+        // visual-capture determinism — see Phase 1) and irrelevant for
+        // borderless/frameless windows. Phase 4. (Host CSS adds top padding
+        // in production mode so content doesn't slide under traffic lights.)
+        if !config.testMode && !config.frameless {
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
         }
         if config.floating || config.followCursor {
             window.level = .floating

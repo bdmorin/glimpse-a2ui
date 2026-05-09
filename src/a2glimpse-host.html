@@ -86,6 +86,17 @@
   a2ui-text[usage-hint="h3"] { font-size: 16px; font-weight: 600; line-height: 1.35; }
   a2ui-text[usage-hint="h4"] { font-size: 14px; font-weight: 600; line-height: 1.4;  }
   a2ui-text[usage-hint="caption"] { font-size: 12px; opacity: 0.72; }
+
+  /* Unified-titlebar compensation. In production mode the Swift host enables
+     fullSizeContentView + transparent titlebar, which lets WKWebView content
+     extend up to where the traffic lights sit (~28px). Add top padding so
+     surface content doesn't slide under the traffic lights. Test-mode keeps
+     the standard chrome (Phase 1 contract — geometry must stay deterministic
+     for visual-regression goldens), so the test-mode branch is unaffected.
+     Phase 4. */
+  body:not([data-test-mode]) {
+    padding-top: 48px;
+  }
 </style>
 <style id="a2glimpse-test-mode">
 /* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
