@@ -1,0 +1,10 @@
+a2glimpse includes a generated browser bundle in src/a2glimpse-host.html.
+
+That bundle vendors code from Google's A2UI project:
+
+  https://github.com/google/A2UI
+
+A2UI is licensed under the Apache License, Version 2.0.
+The generated bundle preserves upstream license comments where emitted by the bundler.
+
+a2glimpse itself is a fork of HazAT/glimpse, which is licensed under MIT.

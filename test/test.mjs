@@ -1,13 +1,34 @@
-import { open } from '../src/glimpse.mjs';
+import { open } from '../src/a2glimpse.mjs';
 
 const TIMEOUT_MS = 10_000;
 
-const HTML = `<!DOCTYPE html>
-<html>
-  <body>
-    <button id="btn" onclick="window.glimpse.send({action:'clicked'})">Click</button>
-  </body>
-</html>`;
+const messages = [
+  {
+    surfaceUpdate: {
+      surfaceId: 'smoke',
+      components: [
+        { id: 'root', component: { Column: { children: { explicitList: ['title', 'button'] } } } },
+        { id: 'title', component: { Text: { usageHint: 'h3', text: { literalString: 'a2glimpse smoke' } } } },
+        { id: 'button_text', component: { Text: { text: { literalString: 'Confirm' } } } },
+        {
+          id: 'button',
+          component: {
+            Button: {
+              child: 'button_text',
+              primary: true,
+              action: {
+                name: 'smoke.confirm',
+                context: [{ key: 'answer', value: { literalString: 'yes' } }],
+              },
+            },
+          },
+        },
+      ],
+    },
+  },
+  { dataModelUpdate: { surfaceId: 'smoke', contents: [] } },
+  { beginRendering: { surfaceId: 'smoke', root: 'root' } },
+];
 
 function pass(msg) {
   console.log(`  ✓ ${msg}`);
@@ -29,46 +50,43 @@ function waitFor(emitter, event, timeoutMs = TIMEOUT_MS) {
       resolve(args);
     });
 
-    emitter.once('error', (err) => {
+    emitter.once('error', err => {
       clearTimeout(timer);
       reject(err);
     });
   });
 }
 
-console.log('glimpse integration test\n');
+console.log('a2glimpse integration smoke test\n');
 
 let win;
 try {
-  // Step 1: Open window
-  win = open(HTML, {
-    title: 'Glimpse Test',
-    width: 400,
-    height: 300,
-    openLinks: true,
-  });
+  win = open({ title: 'a2glimpse test', width: 420, height: 260, hidden: true });
   pass('Window opened');
 
-  // Step 2: Wait for ready (open() internally sets HTML on ready, then emits ready to us)
   await waitFor(win, 'ready');
   pass('ready event received');
 
-  // Step 3: Programmatically click the button via eval
-  win.send(`document.getElementById('btn').click()`);
-  pass('Sent eval: btn.click()');
+  for (const message of messages) win.dispatch(message);
+  pass('A2UI fixture dispatched');
 
-  // Step 4: Wait for message and assert payload
-  const [data] = await waitFor(win, 'message');
-  if (data?.action !== 'clicked') {
-    fail(`Expected data.action === 'clicked', got: ${JSON.stringify(data)}`);
-  }
-  pass(`message received: ${JSON.stringify(data)}`);
+  win._testClick('button');
+  const [action] = await waitFor(win, 'userAction');
+  if (action?.name !== 'smoke.confirm') fail(`Expected smoke.confirm, got ${JSON.stringify(action)}`);
+  if (action?.surfaceId !== 'smoke') fail(`Expected surfaceId smoke, got ${JSON.stringify(action)}`);
+  if (action?.sourceComponentId !== 'button') fail(`Expected sourceComponentId button, got ${JSON.stringify(action)}`);
+  if (action?.context?.answer !== 'yes') fail(`Expected context.answer yes, got ${JSON.stringify(action)}`);
+  pass(`userAction received: ${JSON.stringify(action)}`);
 
-  // Step 5: Close window
+  win.getInfo();
+  await waitFor(win, 'info');
+  pass('info event received');
+
+  win.dispatch({ nope: true });
+  await waitFor(win, 'clientError');
+  pass('invalid protocol input reported as error');
+
   win.close();
-  pass('Sent close');
-
-  // Step 6: Wait for closed
   await waitFor(win, 'closed');
   pass('closed event received');
 

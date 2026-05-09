@@ -1,5 +1,6 @@
-# Compiled binary (do not ignore src/glimpse.swift or src/glimpse.mjs)
+# Compiled binary (do not ignore src/glimpse.swift or JS wrappers)
 src/glimpse
+src/a2glimpse
 
 # Linux build output
 src/linux/target/
@@ -10,6 +11,7 @@ native/windows/obj/
 
 # Build markers
 .glimpse-build-skipped
+.a2glimpse-build-skipped
 
 # Dependencies
 node_modules/
@@ -21,3 +23,4 @@ node_modules/
 # macOS
 .DS_Store
 review.md
+.pet-runs/

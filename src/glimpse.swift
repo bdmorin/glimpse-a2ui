@@ -13,7 +13,7 @@ func writeToStdout(_ dict: [String: Any]) {
 }
 
 func log(_ message: String) {
-    fputs("[glimpse] \(message)\n", stderr)
+    fputs("[a2glimpse] \(message)\n", stderr)
 }
 
 // MARK: - System Info
@@ -121,7 +121,7 @@ func anchorPosition(mouse: NSPoint, windowSize: NSSize, anchor: String) -> NSPoi
 struct Config {
     var width: Int = 800
     var height: Int = 600
-    var title: String = "Glimpse"
+    var title: String = "a2glimpse"
     var frameless: Bool = false
     var floating: Bool = false
     var transparent: Bool = false
@@ -440,8 +440,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         }
         window.contentView?.addSubview(webView)
 
-        // Load blank page so didFinish fires and we emit "ready"
-        webView.loadHTMLString("<html><body></body></html>", baseURL: nil)
+        loadRendererHost()
     }
 
     // MARK: - Status Item
@@ -464,13 +463,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         // Create status bar item
         nsStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = nsStatusItem?.button {
-            button.title = config.title == "Glimpse" ? "G" : config.title
+            button.title = config.title == "a2glimpse" ? "A2" : config.title
             button.action = #selector(statusItemClicked(_:))
             button.target = self
         }
 
-        // Load blank page to trigger first ready
-        webView.loadHTMLString("<html><body></body></html>", baseURL: nil)
+        loadRendererHost()
+    }
+
+    private func loadRendererHost() {
+        let executableDir = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.deletingLastPathComponent()
+        let hostURL = executableDir.appendingPathComponent("a2glimpse-host.html")
+        if FileManager.default.fileExists(atPath: hostURL.path) {
+            webView.loadFileURL(hostURL, allowingReadAccessTo: executableDir)
+            return
+        }
+
+        let cwdURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("src/a2glimpse-host.html")
+        if FileManager.default.fileExists(atPath: cwdURL.path) {
+            webView.loadFileURL(cwdURL, allowingReadAccessTo: cwdURL.deletingLastPathComponent())
+            return
+        }
+
+        log("renderer host not found next to binary or at src/a2glimpse-host.html")
+        webView.loadHTMLString("<html><body>Missing a2glimpse renderer host.</body></html>", baseURL: nil)
     }
 
     @objc func statusItemClicked(_ sender: Any?) {
@@ -619,8 +635,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.isEmpty else { continue }
                 guard let data = trimmed.data(using: .utf8),
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let type = json["type"] as? String
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 else {
                     log("Skipping invalid JSON: \(trimmed)")
                     continue
@@ -628,7 +643,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 let handler = self
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated {
-                        handler?.handleCommand(type: type, json: json)
+                        handler?.handleInput(json)
                     }
                 }
             }
@@ -644,23 +659,46 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
 
     // MARK: - Command Dispatch
 
+    func handleInput(_ json: [String: Any]) {
+        if let type = json["type"] as? String {
+            handleCommand(type: type, json: json)
+            return
+        }
+
+        let a2uiKeys = ["surfaceUpdate", "dataModelUpdate", "beginRendering", "deleteSurface"]
+        if a2uiKeys.contains(where: { json[$0] != nil }) {
+            dispatchA2uiMessage(json)
+            return
+        }
+
+        writeToStdout(["error": ["message": "Unknown input. Expected an A2UI v0.8 message or lifecycle command."]])
+    }
+
+    func dispatchA2uiMessage(_ json: [String: Any]) {
+        guard JSONSerialization.isValidJSONObject(json),
+              let data = try? JSONSerialization.data(withJSONObject: json),
+              let payload = String(data: data, encoding: .utf8)
+        else {
+            writeToStdout(["error": ["message": "Invalid A2UI JSON payload"]])
+            return
+        }
+
+        let js = """
+        if (window.a2glimpse && typeof window.a2glimpse.dispatch === 'function') {
+          window.a2glimpse.dispatch(\(payload));
+        } else {
+          throw new Error('a2glimpse renderer host is not ready');
+        }
+        """
+        webView.evaluateJavaScript(js) { _, error in
+            if let error {
+                writeToStdout(["error": ["message": error.localizedDescription]])
+            }
+        }
+    }
+
     func handleCommand(type: String, json: [String: Any]) {
         switch type {
-        case "html":
-            guard let base64 = json["html"] as? String,
-                  let htmlData = Data(base64Encoded: base64),
-                  let html = String(data: htmlData, encoding: .utf8)
-            else {
-                log("html command: missing or invalid base64 payload")
-                return
-            }
-            webView.loadHTMLString(html, baseURL: nil)
-        case "eval":
-            guard let js = json["js"] as? String else {
-                log("eval command: missing js field")
-                return
-            }
-            webView.evaluateJavaScript(js, completionHandler: nil)
         case "follow-cursor":
             guard !config.statusItem else {
                 log("follow-cursor not supported in status-item mode")
@@ -708,17 +746,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             } else {
                 webView.evaluateJavaScript("window.glimpse.cursorTip = null", completionHandler: nil)
             }
-        case "file":
-            guard let path = json["path"] as? String else {
-                log("file command: missing path field")
-                return
-            }
-            let fileURL = URL(fileURLWithPath: path)
-            guard FileManager.default.fileExists(atPath: path) else {
-                log("file command: file not found: \(path)")
-                return
-            }
-            webView.loadFileURL(fileURL, allowingReadAccessTo: fileURL.deletingLastPathComponent())
         case "get-info":
             var info = getSystemInfo()
             info["type"] = "info"
@@ -766,10 +793,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             } else {
                 window.setContentSize(size)
             }
+        case "__test-click":
+            guard let id = json["id"] as? String,
+                  let idData = try? JSONSerialization.data(withJSONObject: [id]),
+                  let idArrayJSON = String(data: idData, encoding: .utf8)
+            else {
+                writeToStdout(["error": ["message": "__test-click requires an id"]])
+                return
+            }
+            let idJSON = String(idArrayJSON.dropFirst().dropLast())
+            let js = """
+            (() => {
+              const targetId = \(idJSON);
+              const seen = new Set();
+              const visit = root => {
+                if (!root || seen.has(root)) return null;
+                seen.add(root);
+                if (root.getElementById) {
+                  const match = root.getElementById(targetId);
+                  if (match) return match;
+                }
+                const nodes = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                for (const node of nodes) {
+                  if (node.id === targetId) return node;
+                  const shadowMatch = visit(node.shadowRoot);
+                  if (shadowMatch) return shadowMatch;
+                }
+                return null;
+              };
+              const el = visit(document);
+              if (!el) throw new Error(`No element with id ${targetId}`);
+              const clickable = el.shadowRoot?.querySelector('button,input,[role="button"]') ?? el;
+              clickable.click();
+            })();
+            """
+            webView.evaluateJavaScript(js) { _, error in
+                if let error {
+                    writeToStdout(["error": ["message": error.localizedDescription]])
+                }
+            }
         case "close":
             closeAndExit()
         default:
             log("Unknown command type: \(type)")
+            writeToStdout(["error": ["message": "Unknown command type: \(type)"]])
         }
     }
 
@@ -847,7 +914,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 return
             }
 
-            writeToStdout(["type": "message", "data": json])
+            if json["userAction"] != nil || json["error"] != nil {
+                writeToStdout(json)
+            } else {
+                writeToStdout(["error": ["message": "Unsupported renderer event"]])
+            }
             if config.autoClose {
                 closeAndExit()
             }
