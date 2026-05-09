@@ -10897,5 +10897,31 @@ lit-html/directives/style-map.js:
   });
 })();
 </script>
+<script>
+// Wrapper-side fix for a renderer defaultTheme gap: theme.components.Tabs is
+// missing `element` (and its `controls.all` / `controls.selected` are nested
+// `empty()` calls but `Tabs.element` is absent). The renderer's Tabs.render()
+// dereferences `this.theme.components.Tabs.element` and passes it to classMap,
+// which calls Object.keys(undefined) and throws — leaving the Tabs shadow root
+// empty (blank output). We patch the `update` lifecycle of <a2ui-tabs> to
+// ensure `this.theme.components.Tabs` has the expected shape just before Lit
+// renders. Vendored IIFE renderer remains unmodified; mutation is host-side.
+customElements.whenDefined('a2ui-tabs').then((TabsCtor) => {
+  const orig = TabsCtor.prototype.update;
+  TabsCtor.prototype.update = function (changedProps) {
+    const t = this.theme;
+    if (t && t.components && t.components.Tabs) {
+      const tabs = t.components.Tabs;
+      if (!tabs.element) tabs.element = {};
+      if (!tabs.controls) tabs.controls = { all: {}, selected: {} };
+      else {
+        if (!tabs.controls.all) tabs.controls.all = {};
+        if (!tabs.controls.selected) tabs.controls.selected = {};
+      }
+    }
+    return orig.call(this, changedProps);
+  };
+});
+</script>
 </body>
 </html>
