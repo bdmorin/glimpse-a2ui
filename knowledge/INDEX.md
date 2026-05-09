@@ -25,6 +25,7 @@ Durable reference material for this fork. Read these before touching code in a n
 ## Agent Surface
 
 - [Agent Control Surface — Pattern Catalog](20260509-180000.agent-control-surface.knowledge.md) — the seven canonical A2UI v0.8 patterns coding agents should use (confirm / choice / multi-choice / free-text / status / diff-review / command-approval), with copy-paste-modify JSONL examples and expected `userAction` shapes. Substrate for HANDOFF.md A2 (MCP bridge) and A3 (agent skill).
+- [`skills/a2glimpse/SKILL.md`](../skills/a2glimpse/SKILL.md) — the agent skill. Teaches Claude / Codex / any SKILL.md-aware harness when to reach for `a2glimpse` (multi-step asks, diff/command approval, persistent status surfaces) and how to drive it via `mcporter call a2glimpse.<tool>`. Built on the seven-pattern catalog. Slice A3.
 
 ## Pre-Implementation Baseline (2026-05-09)
 

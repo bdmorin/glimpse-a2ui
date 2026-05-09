@@ -109,6 +109,10 @@ Stdout emits:
 
 That's the entire registration story. Any agent that can shell out to `mcporter call a2glimpse.<tool>` can drive this.
 
+### Agent skill
+
+For coding agents (Claude Code, Codex, anything SKILL.md-aware): a ready-to-load skill at [`skills/a2glimpse/SKILL.md`](skills/a2glimpse/SKILL.md) teaches when to reach for `a2glimpse` and how to compose the seven canonical A2UI v0.8 patterns (`confirm`, `choice`, `multi-choice`, `free-text`, `status`, `diff-review`, `command-approval`).
+
 ### Trust boundary
 
 The bridge IS the trust boundary for MCP-driven flows. Every A2UI message is validated before forwarding to the child's stdin: top-level key must be one of `{surfaceUpdate, dataModelUpdate, beginRendering, deleteSurface}`, and any `html` / `file` / `eval` key at any depth is rejected loudly. The renderer owns the rest of v0.8 schema semantics.

@@ -23,20 +23,20 @@ Each item below is **actionable in a future session**. Status reflects what's tr
 
 ---
 
-### [ ] A3 — Agent Skill (next priority)
+### [x] A3 — Agent Skill — shipped 2026-05-09
 
-**Status:** unblocked. Depends on A1 (✓ shipped in `v0.8.3`) and A2 (✓ shipped in `v0.8.4`).
+**Path:** [`skills/a2glimpse/SKILL.md`](skills/a2glimpse/SKILL.md)
 
-**What:** A Claude Code skill that teaches coding agents:
-- When to reach for `a2glimpse` (long-lived UI, multi-step interaction, user choice required, etc.)
-- How to phrase `mcporter call a2glimpse.<tool>` invocations
-- How to interpret returned `userAction` payloads
-- How to clean up surfaces (`close`)
-- Reference: the seven A2UI v0.8 patterns from `knowledge/20260509-180000.agent-control-surface.knowledge.md`
+Cross-platform SKILL.md (Claude Code + Codex + any harness that loads the open skills format). Teaches agents:
+- When to reach for `a2glimpse` (multi-step asks, diff/command approval, persistent status surfaces) and when NOT to (single-shot text, non-macOS, mcporter not wired).
+- Compact `mcporter call a2glimpse.<tool>` reference table mapping to the live MCP bridge.
+- A minimum-viable round-trip (surface_update → data_model_update → begin_rendering → await_action → close).
+- All seven patterns from the A1 catalog as copy-paste-modify JSONL recipes with expected `userAction` shapes.
+- Failure modes (mcporter-not-wired, ready-timeout, await timeout, trust-boundary rejection).
 
-**Effort:** 1 session. Mostly docs + worked examples. Heavy lifting (bridge + catalog) is already done.
+Architectural decision recorded in slice devlog: skill-only, no custom tool wrapper. The MCP bridge already exposes the right surface — agents call `mcporter call a2glimpse.<tool>` via Bash.
 
-**Pre-conditions:** none remaining.
+Devlog: `knowledge/log/20260509-182643.a3.devlog.md`. Personal best-practices synthesis at `~/src/gitlab.com/bdmorin/obsidian/_raw/20260509-182643.skills-best-practices.knowledge.md`.
 
 ---
 
