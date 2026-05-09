@@ -15,6 +15,10 @@ Durable reference material for this fork. Read these before touching code in a n
 
 - [Polish + Hardening Plan (2026-05-09)](20260509-140000.polish-and-hardening-plan.plan.md) — phased plan with worktree assignments, conventions, and bail rules. **Read before dispatching worktree agents.**
 
+## Agent Surface
+
+- [Agent Control Surface — Pattern Catalog](20260509-180000.agent-control-surface.knowledge.md) — the seven canonical A2UI v0.8 patterns coding agents should use (confirm / choice / multi-choice / free-text / status / diff-review / command-approval), with copy-paste-modify JSONL examples and expected `userAction` shapes. Substrate for HANDOFF.md A2 (MCP bridge) and A3 (agent skill).
+
 ## Pre-Implementation Baseline (2026-05-09)
 
 - [A2UI Protocol Overview](20260509-162039.a2ui-protocol-overview.knowledge.md) — what A2UI is, who owns it, security model, repo layout. **Read first.**
