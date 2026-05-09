@@ -11,6 +11,10 @@ Durable reference material for this fork. Read these before touching code in a n
 - [Vendored Renderer Pathologies](20260509-154525.vendored-renderer-pathologies.knowledge.md) — three levers (CSS custom properties, additionalStyles, prototype patching) for reaching shadow-DOM components without touching the IIFE. Documents two confirmed renderer bugs (Tabs theme-gap, MultipleChoice schema/element mismatch).
 - [Agent Dispatch Procedure](20260509-160946.agent-dispatch-procedure.knowledge.md) — end-to-end runbook for orchestrator sessions dispatching worktree-isolated sub-agents. Synthesizes the three companion conventions into a single playbook covering pre-dispatch checks, prompt template, monitoring, merge protocol, recovery, and outcome vocabulary.
 
+## Distribution / Packaging
+
+- [Apple Developer Onboarding](20260509-172625.apple-developer-onboarding.knowledge.md) — from-zero walkthrough of enrollment, Developer ID Application cert generation, codesign, and notarytool flow for distributing the `.app` bundle produced by `npm run build:app` (slice C1).
+
 ## Active Plan
 
 - [Polish + Hardening Plan (2026-05-09)](20260509-140000.polish-and-hardening-plan.plan.md) — phased plan with worktree assignments, conventions, and bail rules. **Read before dispatching worktree agents.**

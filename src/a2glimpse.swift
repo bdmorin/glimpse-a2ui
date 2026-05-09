@@ -632,24 +632,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     }
 
     private func loadRendererHost() {
-        // Single, deterministic load path: the renderer host MUST sit adjacent
-        // to the compiled binary. No cwd fallback, no embedded placeholder —
-        // a missing host is a packaging failure, not a runtime condition we
-        // try to paper over. (Phase 2a hardening; see plan doc.)
+        // Dual-mode resolution. WHY this needs comment: a2glimpse ships in two
+        // shapes — (a) dev/npm install: binary at src/a2glimpse with the
+        // host HTML alongside as src/a2glimpse-host.html; (b) packaged .app:
+        // binary at Contents/MacOS/a2glimpse with the host at
+        // Contents/Resources/a2glimpse-host.html. Bundle.main.bundlePath
+        // points at the .app root iff we're running inside a bundle (it
+        // returns the executable dir for plain CLI invocation, which we use
+        // as a fallback signal: if Resources/a2glimpse-host.html doesn't
+        // exist there, fall back to executable-adjacent).
         let executableDir = URL(fileURLWithPath: CommandLine.arguments[0])
             .standardizedFileURL
             .resolvingSymlinksInPath()
             .deletingLastPathComponent()
-        let hostURL = executableDir.appendingPathComponent("a2glimpse-host.html")
 
-        guard FileManager.default.fileExists(atPath: hostURL.path) else {
+        // Try bundle Resources first.
+        var hostURL: URL? = nil
+        var readAccessDir: URL = executableDir
+        if let resourceURL = Bundle.main.url(forResource: "a2glimpse-host", withExtension: "html") {
+            hostURL = resourceURL
+            readAccessDir = resourceURL.deletingLastPathComponent()
+        } else {
+            // Dev/CLI mode: host adjacent to binary.
+            let candidate = executableDir.appendingPathComponent("a2glimpse-host.html")
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                hostURL = candidate
+                readAccessDir = executableDir
+            }
+        }
+
+        guard let url = hostURL else {
             FileHandle.standardError.write(Data(
-                "[a2glimpse] FATAL: renderer host not found at \(hostURL.path). The bundled a2glimpse-host.html must sit adjacent to the binary. Reinstall the package or rebuild via `npm run build:macos`.\n".utf8
+                "[a2glimpse] FATAL: renderer host not found. Looked in Bundle.main Resources and adjacent to \(executableDir.path). Reinstall the package or rebuild via `npm run build:macos` / `npm run build:app`.\n".utf8
             ))
             exit(2)
         }
 
-        webView.loadFileURL(hostURL, allowingReadAccessTo: executableDir)
+        webView.loadFileURL(url, allowingReadAccessTo: readAccessDir)
     }
 
     @objc func statusItemClicked(_ sender: Any?) {
@@ -1170,7 +1189,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     }
 }
 
+// MARK: - Finder-Launch Detection
+//
+// a2glimpse is an MCP appliance — it expects to be spawned with a stdin pipe
+// by Node, the MCP bridge, or a shell pipeline. Double-clicking the .app in
+// Finder routes through launchd, which attaches stdin to /dev/null (a
+// character device). Detect that shape and show a friendly alert instead of
+// silently entering the stdin-read loop and hanging on EOF forever.
+//
+// Detection rule:
+//   - Pipe (Node spawn / shell `|`)        → S_ISFIFO / S_ISSOCK → run normally.
+//   - TTY (interactive shell)              → isatty == 1         → run normally.
+//   - /dev/null character device           → S_ISCHR             → Finder/launchd
+//                                                                  → show alert + exit.
+//
+// This covers the practical cases. Exotic redirections (e.g. stdin from a
+// regular file) fall through to the run-normally path, which is the right
+// default — those callers know what they're doing.
+func wasLaunchedFromFinder() -> Bool {
+    if isatty(STDIN_FILENO) != 0 { return false }
+    var st = stat()
+    if fstat(STDIN_FILENO, &st) != 0 { return false }
+    let mode = st.st_mode & S_IFMT
+    if mode == S_IFIFO || mode == S_IFSOCK { return false }
+    // Char device (e.g. /dev/null) or anything else weird → treat as Finder.
+    return true
+}
+
+func showFinderLaunchAlertAndExit() -> Never {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.regular)
+    let alert = NSAlert()
+    alert.messageText = "a2glimpse is an MCP appliance"
+    alert.informativeText = "a2glimpse is not meant to be launched directly. It runs as a subprocess driven by an MCP bridge or coding agent over stdin/stdout.\n\nSee https://github.com/bdmorin/glimpse-a2ui for usage."
+    alert.alertStyle = .informational
+    alert.addButton(withTitle: "OK")
+    _ = alert.runModal()
+    exit(0)
+}
+
 // MARK: - Entry Point
+
+if wasLaunchedFromFinder() {
+    showFinderLaunchAlertAndExit()
+}
 
 let config = parseArgs()
 let app = NSApplication.shared

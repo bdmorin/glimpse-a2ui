@@ -13,6 +13,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:macos": "node scripts/build.mjs darwin",
+    "build:app": "node scripts/build-app.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "test": "node test/test.mjs",
     "test:visual": "node test/visual.mjs",
