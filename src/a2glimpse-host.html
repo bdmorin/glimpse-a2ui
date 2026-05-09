@@ -4,7 +4,79 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>a2glimpse</title>
-<style>html,body{margin:0;min-height:100%;background:Canvas;color:CanvasText;}body{overflow:auto;}</style>
+<style>
+  /* a2glimpse host theme — wrapper-level styles. Vendored Lit IIFE is read-only;
+     this layer tunes typography, spacing, and Material Design tokens that the
+     renderer's shadow-DOM components inherit / consume. */
+  html, body {
+    margin: 0;
+    background: Canvas;
+    color: CanvasText;
+  }
+  html { height: 100%; }
+  body { min-height: 100%; box-sizing: border-box; }
+  body {
+    /* Scrollbar suppressed at body level — surface chrome is fixed-size in
+       this appliance; renderer components manage their own internal overflow
+       (Card, Column inner sections use overflow: auto within their shadow
+       trees). Letting body scroll on micro-overflow added a permanent
+       trailing scrollbar that wasn't load-bearing. */
+    overflow: hidden;
+    padding: 20px 24px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    background: #fbfcfd;
+    /* Material Design tokens consumed by the vendored renderer. Tuning these
+       cascades into shadow-DOM components without touching the IIFE. */
+    --md-sys-color-primary: #2563eb;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-on-surface: #1f2328;
+    --md-sys-color-outline: #d0d7de;
+    --md-sys-color-outline-variant: #e6eaee;
+    --md-sys-color-surface: #ffffff;
+    --md-sys-color-surface-container-low: #f6f8fa;
+    --md-sys-color-surface-container-high: #eaeef2;
+    --md-sys-color-surface-container-highest: #d8dde3;
+    --md-sys-color-secondary-container: #eef3ff;
+    --md-sys-color-on-secondary-container: #1d3a8a;
+    --md-sys-elevation-level1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
+    --md-sys-elevation-level2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
+    --default-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    --font-family: var(--default-font-family);
+    --font-family-flex: var(--default-font-family);
+  }
+
+  /* Surface-level padding so root content doesn't hug the WKWebView chrome.
+     We pad the body container rather than a2ui-surface so we don't override
+     the renderer's :host display semantics (Lit shadow-DOM components define
+     their own display via :host; external selectors beat that and break
+     layout). */
+  a2glimpse-app {
+    display: block;
+  }
+
+  /* Card outer margin — host element accepts margin without disturbing the
+     internal :host display rule. */
+  a2ui-card {
+    margin: 4px 0;
+  }
+
+  /* Text usageHint typographic emphasis. The vendored renderer reflects
+     `usageHint` to the `usage-hint` attribute (Lit @property reflect: true),
+     so we can scope by attribute even though the component's content lives
+     in shadow DOM — `font-size`/`font-weight` are inheritable and cross the
+     shadow boundary. Markdown markers in the literal text (e.g. "### ") are
+     not stripped here — full markdown rendering is DEFERRED (would require
+     bundling a markdown engine inside the trusted host). This styling at
+     least gives heading-level Text a visual weight that matches its intent. */
+  a2ui-text[usage-hint="h1"] { font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+  a2ui-text[usage-hint="h2"] { font-size: 18px; font-weight: 600; line-height: 1.3;  letter-spacing: -0.005em; }
+  a2ui-text[usage-hint="h3"] { font-size: 16px; font-weight: 600; line-height: 1.35; }
+  a2ui-text[usage-hint="h4"] { font-size: 14px; font-weight: 600; line-height: 1.4;  }
+  a2ui-text[usage-hint="caption"] { font-size: 12px; opacity: 0.72; }
+</style>
 <style id="a2glimpse-test-mode">
 /* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
 body[data-test-mode] *, body[data-test-mode] *::before, body[data-test-mode] *::after {
