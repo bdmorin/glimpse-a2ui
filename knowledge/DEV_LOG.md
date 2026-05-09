@@ -88,3 +88,29 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - Tabs and MultipleChoice fixtures captured almost-empty surfaces. Real visual issues, but they're pre-existing and Phase 3's job. Goldens lock current behavior so regressions are detectable.
 
 ---
+
+## 2026-05-09 ~14:35 — Phase 1 follow-up: pixel-diff + test-mode CSS
+
+**Author:** Claude (Opus 4.7), worktree agent in `worktree-agent-ace4a890f72f16fb8`
+**Context:** Resumed after the SOFT_BLOCK report (prior DEV_LOG entry 2026-05-09 ~14:17). Brian made the calls: shell out to ImageMagick `compare` at 0.1% threshold, inject test-mode CSS via the *host page wrapper* (head/body region — not the vendored Lit blob), wire activation through Swift via WKUserScript when `--test-mode`/`A2GLIMPSE_TEST_MODE` is on. Re-bless goldens, then verify stability across 3 back-to-back compare runs.
+
+**Did:**
+- `src/a2glimpse-host.html`: added a second `<style id="a2glimpse-test-mode">` block scoped to `body[data-test-mode]` — animations/transitions off, caret transparent, focus rings/box-shadows neutralized. Inert when the attribute is absent. Edited only the wrapper head; the vendored Lit IIFE (lines 11+) is untouched.
+- `src/a2glimpse.swift::makeWebViewConfiguration()`: when `config.testMode` is on, register a second `WKUserScript` (atDocumentStart) that sets `document.body.dataset.testMode = ''`. One-way Swift→page signal; no new public stdin command, trust boundary intact.
+- `test/visual.mjs`: replaced byte-equal compare with `runCmd('/opt/homebrew/bin/compare', ['-metric','AE','-fuzz','0%', ...])`. Parses absolute pixel-diff from stderr (handles both `<n>` and `<n> (<norm>)` formats). `THRESHOLD_PERCENT = 0.1` constant. Per-fixture line: `<fixture>: <diff> / <total> = <pct>% [PASS|FAIL]`. Diff PNG written to `test/__snapshots__/<hash>/diffs/<fixture>.diff.png` on failure. Added `cropTitlebar()` helper that shaves the top 32px off each capture before bless or compare — see "Considered/rejected" below. Added window-size verification with cap-1 retry: if captured PNG isn't 480x352 (or 2x for Retina), retry once after 500ms then fail loudly.
+- Re-blessed goldens. Renderer hash changed from `5bf7bad3e1dc` to `a0ce316e1b7e` (host-html edited). Old snapshot dir deleted.
+- Stability check: ran `node test/visual.mjs` three times back-to-back. Run 1: 6/6 PASS, worst 0.0052%. Run 2: 6/6 PASS. Run 3: 6/6 PASS. Per-run noise floor is 0–8 pixels out of 153,600 (≤0.0052%), well under the 0.1% threshold.
+- Plan-doc edit: `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` Phase 1 — replaced "byte-equal acceptable for v1" with the pixel-diff + host-page-CSS language Brian dictated; updated Acceptance to "passes pixel-diff (≤0.1%) across three back-to-back runs."
+
+**Considered / rejected:**
+- **Comparing the full 480x352 captured PNG (titlebar included).** Tried it first. Diff was a stable 262 px (0.155%) — just above threshold. Connected-components analysis revealed *all* the diff pixels live in the top 32 pixels: traffic-light buttons (red/yellow/green at +9,+9 / +32,+9 / +55,+9) plus corner antialiasing where the OS draws focus state. The renderer content is bit-exact across runs. Cropping the titlebar before compare is the right scope — we test the *renderer*, not the OS chrome. Documented `TITLEBAR_HEIGHT = 32` and `CONTENT_HEIGHT = 320` constants so a future test-mode geometry tweak is one line.
+- **Loosening `THRESHOLD_PERCENT` to 0.2% to absorb the titlebar jitter.** Rejected per the standing rule against papering over instabilities. The right move is to remove the noise source (crop), not raise the bar.
+- **Hiding the titlebar entirely via `NSWindow.styleMask` in test mode.** Possible but invasive — it would change focus/keyboard behavior and break the `--title`-based window discovery used for `snap-happy.ListWindows`. Crop is cheaper and keeps the runtime semantics identical.
+- **Generalizing the retry loop into a configurable retry count.** Rejected — brief explicitly says cap at 1, don't loop.
+
+**Open / next:**
+- Phase 1 acceptance met: pixel-diff harness green 6/6 across 3 runs.
+- One observation worth a follow-up if it bites again: the iTerm-instead-of-a2glimpse anomaly from the prior run did not reproduce in any of the 3 stability runs after the window-size verify-and-retry was added. Treat as resolved-pending-recurrence.
+- Trust boundary verified: only changes to the public surface are CSS in the host wrapper (geometry/timing) and a Swift-internal user script. No new stdin commands, no new bridge functions, no edits to the vendored Lit IIFE.
+
+---

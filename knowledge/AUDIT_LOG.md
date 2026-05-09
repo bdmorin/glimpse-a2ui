@@ -51,3 +51,21 @@ Never edit past entries. Correct with a follow-up entry that references the prio
 **Notes:** Capture pipeline works end-to-end; goldens are visually correct (4/6 components render as expected; Tabs and MultipleChoice render thinly per pre-existing POC-retro findings — Phase 3's job). The plan's byte-equal-comparison assumption is empirically false on this host: WKWebView captures vary 10–100 bytes run-to-run from PNG-encoder + sub-pixel AA + caret-blink jitter. Did NOT silently swap in pixel-diff — that's a plan revision. Recommendation in retro: decide tolerance + tooling (shell out to ImageMagick `compare` vs add a tiny dev dep), then re-bless. Smoke test (`npm test`) green throughout.
 
 ---
+
+## 2026-05-09 ~14:35 — Phase 1 follow-up: pixel-diff + test-mode CSS
+**Agent:** Claude Opus 4.7 (1M ctx), worktree sub-agent (resumed)
+**Worktree:** `worktree-agent-ace4a890f72f16fb8` (continued from prior entry)
+**Lineage:** continuation of 2026-05-09 ~14:17 SOFT_BLOCK; retro `knowledge/20260509-141700.phase1-visual-harness.retrospective.md`. Decisions provided by Brian via orchestrator on resume: ImageMagick `compare` at 0.1% threshold, host-page CSS scaffolding for test-mode determinism, 3-run stability gate, cap-1 window-size retry.
+**Action:** Implemented pixel-diff via shelling out to `/opt/homebrew/bin/compare`. Added test-mode CSS scaffold to `src/a2glimpse-host.html` head (wrapper region only — vendored Lit IIFE untouched). Wired activation via WKUserScript in `src/a2glimpse.swift` that sets `body.dataset.testMode` when `--test-mode`. Added titlebar-crop step (the 262-px residual jitter localized entirely to the titlebar's traffic-light controls; cropping to the 480x320 content area drops the noise floor to ≤8 px / 0.0052%). Added window-size verify with one retry. Re-blessed goldens at new renderer hash `a0ce316e1b7e`. Ran compare 3x back-to-back: 6/6 PASS each run.
+**Outcome:** OK
+**Artifacts:**
+- `src/a2glimpse-host.html` (added `<style id="a2glimpse-test-mode">` block, wrapper region only)
+- `src/a2glimpse.swift` (`makeWebViewConfiguration`: register testMode-activation `WKUserScript` when `config.testMode`)
+- `test/visual.mjs` (ImageMagick `compare` integration, `THRESHOLD_PERCENT = 0.1`, titlebar crop, window-size retry)
+- `test/__snapshots__/a0ce316e1b7e/{button-only,card-text,modal,multiple-choice,text-field-form,tabs}.png` (re-blessed goldens, 480x320 content-only)
+- `test/__snapshots__/5bf7bad3e1dc/` (deleted — stale renderer hash)
+- `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` (Phase 1 prose updated: pixel-diff via `compare` at 0.1%, host-page CSS scaffolding, 3-run acceptance)
+- `knowledge/DEV_LOG.md` (new entry 2026-05-09 ~14:35)
+**Notes:** Trust boundary intact — no new public stdin commands, no new `glimpse.*` bridge functions. The vendored Lit IIFE in `a2glimpse-host.html` (script block from line ~11 onward) was not touched; only the wrapper head/body region got CSS additions. Stability runs: worst-run noise 0.0052%, best 0.0000% — fully clear of the 0.1% threshold. The iTerm-capture race from the prior session did not reproduce; window-size verification was added defensively per the brief.
+
+---
