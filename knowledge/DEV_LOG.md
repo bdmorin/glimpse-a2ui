@@ -114,3 +114,25 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - Trust boundary verified: only changes to the public surface are CSS in the host wrapper (geometry/timing) and a Swift-internal user script. No new stdin commands, no new bridge functions, no edits to the vendored Lit IIFE.
 
 ---
+
+## 2026-05-09 ~19:40 — Phase 2a: harden renderer-host load (drop cwd fallback)
+
+**Author:** Claude (Opus 4.7), worktree agent in `worktree-agent-a2c9866b899106cca`
+**Context:** Phase 2a of `knowledge/20260509-140000.polish-and-hardening-plan.plan.md`. POC retro recommendation #1: the upstream-derived `loadRendererHost()` had a deterministic "next to binary" path *plus* a cwd-relative `src/a2glimpse-host.html` fallback *plus* a silent `loadHTMLString("Missing a2glimpse renderer host.")` last-ditch case. The fallbacks made packaging failures invisible to the user and let an inconsistent setup limp along. Trust-boundary-adjacent: a non-deterministic load path is a soft attack surface (someone could drop a host file in cwd and have it preferred over the bundled one in some launch scenarios).
+
+**Did:**
+- `src/a2glimpse.swift::loadRendererHost()`: collapsed three branches into one. Resolve `executableDir` from `CommandLine.arguments[0]` with `standardizedFileURL.resolvingSymlinksInPath().deletingLastPathComponent()` so a symlinked binary still resolves to the real install dir. Look only at `executableDir/a2glimpse-host.html`. If absent → write a single explanatory line to stderr (`[a2glimpse] FATAL: renderer host not found at <path>. The bundled a2glimpse-host.html must sit adjacent to the binary. Reinstall ... or rebuild via npm run build:macos.`) and `exit(2)`. No HTML placeholder, no second path tried.
+- Verified the failure path manually: temporarily renamed `src/a2glimpse-host.html`, ran the binary, observed stderr line + `exit 2`, restored the file. Smoke and visual harness both green pre- and post-change. Visual hash unchanged (`a0ce316e1b7e`) — no goldens were touched.
+
+**Considered / rejected:**
+- **Keeping a cwd fallback gated to `--dev` or `A2GLIMPSE_DEV=1`.** Rejected. A second resolution path is the exact thing the brief says to remove, and there isn't a development scenario the bundled-adjacent path can't already serve (rebuild puts the host next to the freshly-built binary). The brief is also explicit that any new stdin/env trust-surface is out of scope here.
+- **Logging via the existing `log()` helper instead of writing directly to stderr.** Rejected — `log()` only fires when `config.verbose` is set, and a fatal-path message must always emit. Direct `FileHandle.standardError.write` mirrors how unrecoverable failures should signal regardless of verbosity.
+- **Falling through to `loadHTMLString("Missing renderer host")` so the WebView still mounts and the wrapper at least sees `closed`.** Rejected — that's the papering-over the brief explicitly bans. A missing host is unrecoverable; failing fast with a non-zero exit is the contract.
+- **Returning a specific exit code per failure mode (e.g. 2 for missing host, 3 for malformed, etc.).** Out of scope; only one failure mode here today, and we don't have a documented exit-code table to slot into. Picked `2` to be distinguishable from `1` (Swift's default crash) and `0` (success).
+- **Resolving via `Bundle.main.bundleURL` instead of `CommandLine.arguments[0]`.** Rejected for now — the binary is not yet a `.app` bundle (POC scope), and `Bundle.main` for a bare CLI on macOS resolves to the executable's directory, which is what `argv[0]` already gives us. Revisit when `.app` packaging lands.
+
+**Open / next:**
+- Phase 2b (`wt/harden-test-gating`) and Phase 2c (`wt/harden-ready-signal`) still pending; they were dispatched as parallel slices.
+- `scripts/postinstall.mjs` doesn't currently verify the host-html file ends up alongside the binary post-install. Not in scope here, but worth a note if a future packaging change ever decoupled `src/a2glimpse-host.html` from the binary's directory.
+
+---

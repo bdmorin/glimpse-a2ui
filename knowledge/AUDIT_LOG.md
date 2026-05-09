@@ -69,3 +69,16 @@ Never edit past entries. Correct with a follow-up entry that references the prio
 **Notes:** Trust boundary intact — no new public stdin commands, no new `glimpse.*` bridge functions. The vendored Lit IIFE in `a2glimpse-host.html` (script block from line ~11 onward) was not touched; only the wrapper head/body region got CSS additions. Stability runs: worst-run noise 0.0052%, best 0.0000% — fully clear of the 0.1% threshold. The iTerm-capture race from the prior session did not reproduce; window-size verification was added defensively per the brief.
 
 ---
+
+## 2026-05-09 ~19:40 — Phase 2a: harden renderer-host load
+**Agent:** Claude Opus 4.7 (1M ctx), worktree sub-agent
+**Worktree:** `worktree-agent-a2c9866b899106cca` (rebased onto `main` @ 096d310 before work to pull in Phase 1 plan + harness)
+**Lineage:** Phase 2a of `knowledge/20260509-140000.polish-and-hardening-plan.plan.md`; dispatched by orchestrator session 2026-05-09. Implements POC-retro recommendation #1 (drop cwd renderer fallback).
+**Action:** Collapsed `loadRendererHost()` to a single deterministic path (`<dir-of-binary>/a2glimpse-host.html`). Removed cwd `src/a2glimpse-host.html` fallback and the silent `loadHTMLString("Missing a2glimpse renderer host.")` last-ditch case. Missing host → explanatory stderr line (`[a2glimpse] FATAL: ...`) + `exit(2)`. Resolution uses `standardizedFileURL.resolvingSymlinksInPath()` so symlinked launches still find the real install dir.
+**Outcome:** OK
+**Artifacts:**
+- `src/a2glimpse.swift` (`loadRendererHost()` rewritten; ~17 lines → ~17 lines, three branches → one)
+- `knowledge/DEV_LOG.md` (entry 2026-05-09 ~19:40)
+**Notes:** Trust boundary intact — no new stdin commands, no new bridge functions, host HTML and vendored Lit untouched. Pre- and post-change `npm test` (smoke) green. `npm run test:visual` green at unchanged renderer hash `a0ce316e1b7e` (no re-bless). Manual fail-path verified by temporarily renaming the host file: stderr line printed, exit code 2, then file restored before any commit.
+
+---
