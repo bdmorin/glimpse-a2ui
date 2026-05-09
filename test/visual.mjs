@@ -45,6 +45,7 @@ const FIXTURES = [
   'slider',
   'text-field-form',
   'tabs',
+  'icon',
 ];
 
 // Render-settle delay. Empirically generous; the renderer is local and fast.

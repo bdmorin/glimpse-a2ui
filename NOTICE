@@ -8,3 +8,23 @@ A2UI is licensed under the Apache License, Version 2.0.
 The generated bundle preserves upstream license comments where emitted by the bundler.
 
 a2glimpse itself is a fork of HazAT/glimpse, which is licensed under MIT.
+
+----
+
+a2glimpse bundles the Material Symbols Outlined icon font as
+src/MaterialSymbolsOutlined.woff2 so the vendored renderer's icon
+component (.g-icon, hardcoded font-family "Material Symbols Outlined")
+resolves to glyphs instead of plain ligature keys.
+
+  Source: https://github.com/google/material-design-icons
+  Upstream serving: https://fonts.google.com/icons
+
+The Material Symbols font set is licensed under the Apache License,
+Version 2.0:
+
+  https://www.apache.org/licenses/LICENSE-2.0
+
+A copy of the license is available at the URL above. The shipped
+woff2 was generated from the single-weight 400 outlined ttf served
+by Google Fonts (recompressed via fontTools/Brotli to woff2). No
+modifications were made to the glyph set.

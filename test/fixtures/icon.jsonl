@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Column":{"children":{"explicitList":["intro","i_home","i_star","i_settings"]}}}},{"id":"intro","component":{"Text":{"text":{"literalString":"Material Symbols smoke test"}}}},{"id":"i_home","component":{"Icon":{"name":{"literalString":"home"}}}},{"id":"i_star","component":{"Icon":{"name":{"literalString":"star"}}}},{"id":"i_settings","component":{"Icon":{"name":{"literalString":"settings"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}

@@ -22,6 +22,7 @@
     "src/a2glimpse.swift",
     "src/a2glimpse.mjs",
     "src/a2glimpse-host.html",
+    "src/MaterialSymbolsOutlined.woff2",
     "src/follow-cursor-support.mjs",
     "bin/a2glimpse.mjs",
     "scripts/build.mjs",

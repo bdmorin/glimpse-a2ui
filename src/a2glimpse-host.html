@@ -8,6 +8,53 @@
   /* a2glimpse host theme — wrapper-level styles. Vendored Lit IIFE is read-only;
      this layer tunes typography, spacing, and Material Design tokens that the
      renderer's shadow-DOM components inherit / consume. */
+
+  /* Material Symbols Outlined — bundled adjacent to the binary so the
+     vendored renderer's `.g-icon` rule (font-family: "Material Symbols
+     Outlined", shadow-scoped, hardcoded) resolves to actual glyphs instead
+     of the snake_case ligature key as plain text. @font-face declarations
+     are global and pierce shadow DOM, which is the only renderer-respecting
+     lever available without editing the vendored IIFE.
+
+     font-display: block — the renderer's own `.g-icon` rule uses `optional`,
+     which gives the browser only ~100ms to load before locking in fallback
+     for the page lifetime. That timing was racing the modal close button
+     ("clo" text instead of × glyph) even with the font bundled. `block` on
+     the host-level @font-face waits up to 3s for the font, then falls back
+     gracefully. The renderer's shadow-scoped `optional` still applies to
+     its OWN sheet, but the host @font-face is what actually loads the
+     bytes — block-mode here ensures the font is in the document's font
+     set by the time any shadow-root .g-icon span resolves it.
+
+     Source: Google Fonts (https://fonts.google.com/icons), single-weight
+     400 outlined glyph set, ttf-to-woff2 recompressed (~310 KB). License:
+     Apache 2.0 — see NOTICE. */
+  @font-face {
+    font-family: "Material Symbols Outlined";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("MaterialSymbolsOutlined.woff2") format("woff2");
+  }
+  /* Light-DOM helper class mirroring the renderer's shadow-scoped rule.
+     Use this on any host-side icon span if needed; the vendored renderer
+     emits its own scoped rule for shadow content, so this exists for
+     parity / future host-side icon use. */
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+  }
   html, body {
     margin: 0;
     background: Canvas;
