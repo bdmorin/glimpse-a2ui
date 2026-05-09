@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Column":{"children":{"explicitList":["heading","volume","brightness"]}}}},{"id":"heading","component":{"Text":{"usageHint":"h3","text":{"literalString":"Settings"}}}},{"id":"volume","component":{"Slider":{"label":{"literalString":"Volume"},"value":{"literalNumber":42},"minValue":0,"maxValue":100}}},{"id":"brightness","component":{"Slider":{"label":{"literalString":"Brightness"},"value":{"literalNumber":75},"minValue":0,"maxValue":100}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}
