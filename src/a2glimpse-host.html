@@ -10749,7 +10749,31 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
       Card: { border: "1px solid #d0d7de", borderRadius: "8px", padding: "16px", background: "Canvas" },
       Text: { body: { margin: "0" }, h1: { margin: "0", fontSize: "24px" }, h2: { margin: "0", fontSize: "20px" }, h3: { margin: "0", fontSize: "18px" }, h4: { margin: "0" }, h5: { margin: "0" }, caption: { margin: "0", opacity: "0.75" } },
       TextField: { appearance: "none", boxSizing: "border-box", width: "100%", border: "1px solid #d0d7de", borderRadius: "6px", padding: "8px 10px", background: "Canvas", color: "CanvasText", font: "inherit", lineHeight: "1.4" },
-      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "#0a84ff", cursor: "pointer" }
+      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "#0a84ff", cursor: "pointer" },
+      // Modal: styles the inner <section class="...Modal.element"> wrapper inside
+      // the <dialog>. Gives the modal panel card-like chrome. We cannot reach
+      // the <dialog> itself from outside the renderer's shadow DOM — its
+      // shadow CSS hard-codes `dialog { padding: 0; border: none; background: none }`
+      // with no var() indirection, so wrapper CSS, custom properties, and
+      // additionalStyles all bounce off. The inner section IS reachable via this
+      // hook, so we promote it to the visible "modal panel" surface: the dialog
+      // becomes a transparent positioning container, the section becomes the
+      // card. The hardcoded 20x20 close button inside `#controls` likewise lives
+      // in shadow CSS without var() indirection — see modal-retry devlog.
+      Modal: {
+        display: "block",
+        boxSizing: "border-box",
+        minWidth: "280px",
+        maxWidth: "min(90vw, 480px)",
+        margin: "0",
+        padding: "20px 22px",
+        background: "var(--md-sys-color-surface, #ffffff)",
+        color: "var(--md-sys-color-on-surface, #1f2328)",
+        border: "1px solid var(--md-sys-color-outline-variant, #e6eaee)",
+        borderRadius: "12px",
+        boxShadow: "var(--md-sys-elevation-level2, 0 12px 32px rgba(15,23,42,0.18))",
+        font: "inherit"
+      }
       // NOTE: CheckBox additionalStyles deliberately omitted. The renderer's
       // shadow CSS hard-codes `input { display: block; width: 100%; }`, which
       // stretches the native <input> across the full section width and pushes
@@ -11012,6 +11036,45 @@ customElements.whenDefined('a2ui-tabs').then((TabsCtor) => {
       }
     }
     return orig.call(this, changedProps);
+  };
+});
+</script>
+<script>
+// Test-mode-only auto-open for <a2ui-modal>. The Modal renders a closed
+// "entry" trigger by default; the <dialog> doesn't mount until clicked. The
+// visual-regression harness needs to capture the *open* state to verify
+// modal-panel polish. Rather than introducing a new public stdin command
+// (would punch a hole in the trust boundary) or auth'ing the fixture to
+// dispatch a synthetic action (A2UI v0.8 has no "open this modal" message),
+// we synthesize the same DOM click the user would make — but only when
+// body[data-test-mode] is set by Swift's --test-mode path. Production never
+// sees this behavior; production agents click the trigger themselves.
+//
+// Approach: wrap a2ui-modal's `firstUpdated` / `updated` lifecycle so the
+// first time the closed-state <section slot=entry> mounts, we click it. The
+// click flips the renderer's private @state showModal; the next update path
+// renders the <dialog> and requestAnimationFrame -> showModal() opens it.
+customElements.whenDefined('a2ui-modal').then((ModalCtor) => {
+  const origUpdated = ModalCtor.prototype.updated;
+  ModalCtor.prototype.updated = function (changedProps) {
+    if (origUpdated) origUpdated.call(this, changedProps);
+    if (!document.body || !document.body.hasAttribute('data-test-mode')) return;
+    if (this.__a2glimpseAutoOpened) return;
+    const root = this.shadowRoot;
+    if (!root) return;
+    // Closed state shadow tree contains a single <section> with the entry
+    // slot. The open state has <dialog>; if we already see <dialog>, we're
+    // past the point of needing to click.
+    if (root.querySelector('dialog')) {
+      this.__a2glimpseAutoOpened = true;
+      return;
+    }
+    const trigger = root.querySelector('section');
+    if (trigger) {
+      this.__a2glimpseAutoOpened = true;
+      // Defer one frame so the renderer settles before we toggle state.
+      requestAnimationFrame(() => trigger.click());
+    }
   };
 });
 </script>
