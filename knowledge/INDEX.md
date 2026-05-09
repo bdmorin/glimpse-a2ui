@@ -22,6 +22,10 @@ Durable reference material for this fork. Read these before touching code in a n
 - [Fork Architecture](20260509-162039.fork-architecture.analysis.md) — keep/swap/add design decisions, MVP path, costs, competing hypotheses. **This is an assessment, not built code.**
 - [External References](20260509-162039.external-references.reference.md) — authoritative URLs for specs, renderers, adjacent projects.
 
+## Upstream Filings
+
+- [filings/README.md](filings/README.md) — filing-ready GitHub issue bodies for `google/A2UI` (Tabs theme-gap, MultipleChoice type/variant, MultipleChoice empty-literalArray). Slice B1 deliverable.
+
 ## Implementation Spike (2026-05-09)
 
 - [A2UI Spec Grounding](20260509-121003.a2ui-spec-grounding.knowledge.md) — local verification of A2UI v0.8 message names, renderer entry points, event shape, and eval-harness fit.
