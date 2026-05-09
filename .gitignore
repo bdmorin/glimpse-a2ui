@@ -2,6 +2,9 @@
 src/a2glimpse
 src/glimpse
 
+# .app bundle build output
+dist/
+
 # Linux build output
 src/linux/target/
 

@@ -78,6 +78,39 @@ Stdout emits:
 - No public HTML, file, or eval command.
 - The Lit renderer host is vendored as `src/a2glimpse-host.html` for the POC.
 
+## Packaging (`.app` bundle)
+
+`a2glimpse` can be packaged as a Mac `.app` bundle for distribution and future
+code-signing. The bundle is *not* a clickable launcher — it's an MCP appliance
+spawned over stdin/stdout. Double-clicking the `.app` shows a friendly alert
+and exits.
+
+```bash
+npm run build:app
+# → dist/a2glimpse.app
+```
+
+Layout:
+
+```
+a2glimpse.app/
+  Contents/
+    Info.plist                       (com.bdmorin.a2glimpse, LSUIElement)
+    MacOS/a2glimpse                  (compiled Swift binary)
+    Resources/
+      a2glimpse-host.html
+      MaterialSymbolsOutlined.woff2
+      AppIcon.icns                   (placeholder)
+```
+
+The bundle is **unsigned**. To sign and notarize for distribution see
+[`knowledge/20260509-172625.apple-developer-onboarding.knowledge.md`](knowledge/20260509-172625.apple-developer-onboarding.knowledge.md)
+— a from-zero walkthrough of the Apple Developer enrollment, certificate
+hierarchy, `codesign` invocation, and `notarytool` flow.
+
+The bridge spawns `Contents/MacOS/a2glimpse` directly; the wrapper around
+it is purely for distribution identity.
+
 ## Lineage
 
 This hardfork starts from upstream Glimpse v0.8.0. The fork point is tagged:

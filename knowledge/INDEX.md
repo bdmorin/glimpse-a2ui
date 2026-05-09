@@ -13,6 +13,10 @@ Durable reference material for this fork. Read these before touching code in a n
 - [Renderer Bundle Pins](renderer-bundle-pins.md) — append-only ledger of every vendored bundle that has shipped. Pair with the runbook on every re-vendor.
 - [Agent Dispatch Procedure](20260509-160946.agent-dispatch-procedure.knowledge.md) — end-to-end runbook for orchestrator sessions dispatching worktree-isolated sub-agents. Synthesizes the three companion conventions into a single playbook covering pre-dispatch checks, prompt template, monitoring, merge protocol, recovery, and outcome vocabulary.
 
+## Distribution / Packaging
+
+- [Apple Developer Onboarding](20260509-172625.apple-developer-onboarding.knowledge.md) — from-zero walkthrough of enrollment, Developer ID Application cert generation, codesign, and notarytool flow for distributing the `.app` bundle produced by `npm run build:app` (slice C1).
+
 ## Active Plan
 
 - [Polish + Hardening Plan (2026-05-09)](20260509-140000.polish-and-hardening-plan.plan.md) — phased plan with worktree assignments, conventions, and bail rules. **Read before dispatching worktree agents.**
