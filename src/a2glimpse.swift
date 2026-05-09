@@ -1216,22 +1216,159 @@ func wasLaunchedFromFinder() -> Bool {
     return true
 }
 
-func showFinderLaunchAlertAndExit() -> Never {
+// MARK: - Menubar Pet Mode (Finder-launch fallback)
+//
+// When launched without a stdin pipe, a2glimpse cannot serve its primary role
+// (MCP-driven appliance). Instead of showing a stub alert, it enters menubar
+// mode: a tray icon animated from a Petdex-format spritesheet (1536×1872, 8×9
+// grid of 192×208 frames; row 0 = idle). This serves as a visible "appliance
+// is alive" indicator and gives the .app a graceful Finder-launch behavior.
+//
+// Sprite source priority (first hit wins):
+//   1. ~/.a2glimpse/pets/         — our namespace
+//   2. ~/.codex/pets/             — Codex/Petdex install target
+//   3. ~/Library/Application Support/OpenPets/pets/  — OpenPets installer
+//
+// Format compatibility is intentional. We are NOT affiliated with OpenAI,
+// Codex, Petdex, or OpenPets. See knowledge/20260509-173913.desktop-pet-sprite-ecosystem.knowledge.md.
+
+private struct PetManifest: Decodable {
+    let id: String
+    let displayName: String
+    let description: String?
+    let spritesheetPath: String?
+}
+
+private let MENUBAR_FRAME_W = 192
+private let MENUBAR_FRAME_H = 208
+private let MENUBAR_FRAME_COUNT = 8 // row 0 (idle) max — Petdex spec is 4–8
+private let MENUBAR_FPS: Double = 5.0
+private let MENUBAR_DISPLAY_H: CGFloat = 22.0
+
+private final class MenubarPetController: NSObject {
+    let statusItem: NSStatusItem
+    var frames: [NSImage] = []
+    var frameIndex = 0
+    var timer: Timer?
+    let petName: String
+
+    init(manifest: PetManifest, sheet: CGImage) {
+        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.petName = manifest.displayName
+        super.init()
+        loadIdleFrames(from: sheet)
+        configureMenu()
+        startAnimation()
+        FileHandle.standardError.write("[a2glimpse] menubar mode: \(petName) (\(frames.count) idle frames)\n".data(using: .utf8) ?? Data())
+    }
+
+    private func loadIdleFrames(from sheet: CGImage) {
+        let aspect = CGFloat(MENUBAR_FRAME_W) / CGFloat(MENUBAR_FRAME_H)
+        let displaySize = NSSize(width: MENUBAR_DISPLAY_H * aspect, height: MENUBAR_DISPLAY_H)
+        for col in 0..<MENUBAR_FRAME_COUNT {
+            let rect = CGRect(
+                x: col * MENUBAR_FRAME_W,
+                y: 0, // row 0 = idle, top of sheet in CGImage coords
+                width: MENUBAR_FRAME_W,
+                height: MENUBAR_FRAME_H
+            )
+            guard rect.maxX <= CGFloat(sheet.width), rect.maxY <= CGFloat(sheet.height) else { continue }
+            guard let frame = sheet.cropping(to: rect) else { continue }
+            frames.append(NSImage(cgImage: frame, size: displaySize))
+        }
+    }
+
+    private func configureMenu() {
+        let menu = NSMenu()
+        let nameItem = NSMenuItem(title: petName, action: nil, keyEquivalent: "")
+        nameItem.isEnabled = false
+        menu.addItem(nameItem)
+        menu.addItem(NSMenuItem.separator())
+        let quitItem = NSMenuItem(title: "Quit a2glimpse", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        statusItem.menu = menu
+    }
+
+    @objc func quit() {
+        NSApp.terminate(nil)
+    }
+
+    private func startAnimation() {
+        guard !frames.isEmpty else {
+            // Sprite load failed. Show a fallback "a2g" text in the bar so the
+            // user sees *something* instead of an invisible status item.
+            statusItem.button?.title = "a2g"
+            return
+        }
+        statusItem.button?.image = frames[0]
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / MENUBAR_FPS, repeats: true) { [weak self] _ in
+            guard let self = self, !self.frames.isEmpty else { return }
+            self.frameIndex = (self.frameIndex + 1) % self.frames.count
+            self.statusItem.button?.image = self.frames[self.frameIndex]
+        }
+    }
+}
+
+private func discoverFirstPet() -> (PetManifest, CGImage)? {
+    let fm = FileManager.default
+    let home = fm.homeDirectoryForCurrentUser
+    let dirs: [URL] = [
+        home.appendingPathComponent(".a2glimpse/pets"),
+        home.appendingPathComponent(".codex/pets"),
+        home.appendingPathComponent("Library/Application Support/OpenPets/pets"),
+    ]
+    for dir in dirs {
+        guard let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
+        // Prefer dr-glitch by name; otherwise alphabetical first.
+        let sorted = entries.sorted { a, b in
+            if a.lastPathComponent == "dr-glitch" { return true }
+            if b.lastPathComponent == "dr-glitch" { return false }
+            return a.lastPathComponent < b.lastPathComponent
+        }
+        for petDir in sorted {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: petDir.path, isDirectory: &isDir), isDir.boolValue else { continue }
+            let manifestURL = petDir.appendingPathComponent("pet.json")
+            guard let data = try? Data(contentsOf: manifestURL),
+                  let manifest = try? JSONDecoder().decode(PetManifest.self, from: data) else { continue }
+            let sheetName = manifest.spritesheetPath ?? "spritesheet.webp"
+            let sheetURL = petDir.appendingPathComponent(sheetName)
+            guard let nsImage = NSImage(contentsOf: sheetURL),
+                  let cg = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else { continue }
+            return (manifest, cg)
+        }
+    }
+    return nil
+}
+
+private var menubarController: MenubarPetController?
+
+func enterMenubarPetModeOrAlert() -> Never {
     let app = NSApplication.shared
-    app.setActivationPolicy(.regular)
-    let alert = NSAlert()
-    alert.messageText = "a2glimpse is an MCP appliance"
-    alert.informativeText = "a2glimpse is not meant to be launched directly. It runs as a subprocess driven by an MCP bridge or coding agent over stdin/stdout.\n\nSee https://github.com/bdmorin/glimpse-a2ui for usage."
-    alert.alertStyle = .informational
-    alert.addButton(withTitle: "OK")
-    _ = alert.runModal()
+
+    guard let (manifest, sheet) = discoverFirstPet() else {
+        // No pets installed — keep the original alert behavior so users know what's up.
+        app.setActivationPolicy(.regular)
+        let alert = NSAlert()
+        alert.messageText = "a2glimpse — no pets installed"
+        alert.informativeText = "a2glimpse runs as an MCP appliance. When launched directly, it shows a menubar pet — but no Petdex-format pets were found in:\n\n  ~/.a2glimpse/pets/\n  ~/.codex/pets/\n  ~/Library/Application Support/OpenPets/pets/\n\nInstall pets with `npx petdex install <slug>` or via OpenPets, then re-launch.\n\nSee https://github.com/bdmorin/glimpse-a2ui for MCP usage."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        _ = alert.runModal()
+        exit(0)
+    }
+
+    app.setActivationPolicy(.accessory) // menubar-only, no Dock icon
+    menubarController = MenubarPetController(manifest: manifest, sheet: sheet)
+    app.run()
     exit(0)
 }
 
 // MARK: - Entry Point
 
 if wasLaunchedFromFinder() {
-    showFinderLaunchAlertAndExit()
+    enterMenubarPetModeOrAlert()
 }
 
 let config = parseArgs()
