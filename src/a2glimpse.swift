@@ -526,21 +526,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     }
 
     private func loadRendererHost() {
-        let executableDir = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.deletingLastPathComponent()
+        // Single, deterministic load path: the renderer host MUST sit adjacent
+        // to the compiled binary. No cwd fallback, no embedded placeholder —
+        // a missing host is a packaging failure, not a runtime condition we
+        // try to paper over. (Phase 2a hardening; see plan doc.)
+        let executableDir = URL(fileURLWithPath: CommandLine.arguments[0])
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
         let hostURL = executableDir.appendingPathComponent("a2glimpse-host.html")
-        if FileManager.default.fileExists(atPath: hostURL.path) {
-            webView.loadFileURL(hostURL, allowingReadAccessTo: executableDir)
-            return
+
+        guard FileManager.default.fileExists(atPath: hostURL.path) else {
+            FileHandle.standardError.write(Data(
+                "[a2glimpse] FATAL: renderer host not found at \(hostURL.path). The bundled a2glimpse-host.html must sit adjacent to the binary. Reinstall the package or rebuild via `npm run build:macos`.\n".utf8
+            ))
+            exit(2)
         }
 
-        let cwdURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("src/a2glimpse-host.html")
-        if FileManager.default.fileExists(atPath: cwdURL.path) {
-            webView.loadFileURL(cwdURL, allowingReadAccessTo: cwdURL.deletingLastPathComponent())
-            return
-        }
-
-        log("renderer host not found next to binary or at src/a2glimpse-host.html")
-        webView.loadHTMLString("<html><body>Missing a2glimpse renderer host.</body></html>", baseURL: nil)
+        webView.loadFileURL(hostURL, allowingReadAccessTo: executableDir)
     }
 
     @objc func statusItemClicked(_ sender: Any?) {
