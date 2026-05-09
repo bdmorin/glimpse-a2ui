@@ -378,6 +378,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     var hostReady: Bool = false
     var readyEmitted: Bool = false
 
+    // Pre-host-ready buffering for raw-stdin callers. The Node wrapper awaits
+    // the stdout `ready` event before writing A2UI messages, so it never
+    // races. Raw-stdin callers (e.g. shell pipelines, ad-hoc test harnesses)
+    // can write `surfaceUpdate` before host-ready arrives, in which case the
+    // renderer host isn't wired yet and `window.a2glimpse.dispatch` throws.
+    // Buffer A2UI messages until host-ready, then replay in arrival order.
+    // Lifecycle commands (`get-info`, `close`, `show`, etc.) are NOT buffered;
+    // they don't depend on the renderer.
+    // No bound: if host-ready never fires, that's a real upstream fault and
+    // should surface as runaway memory rather than be papered over with a cap.
+    var pendingA2uiMessages: [[String: Any]] = []
+
     // Status item mode
     var nsStatusItem: NSStatusItem?
     var popover: NSPopover?
@@ -758,6 +770,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     }
 
     func dispatchA2uiMessage(_ json: [String: Any]) {
+        // Ready-race buffering: queue until BOTH webkit-nav and host-ready have
+        // arrived (i.e. the moment we'd emit stdout `ready`). Gating on
+        // `readyEmitted` instead of `hostReady` alone keeps replay strictly
+        // ordered if host-ready ever beats webkit-nav (degenerate but cheap to
+        // be correct about). See AppDelegate.pendingA2uiMessages for rationale.
+        if !readyEmitted {
+            pendingA2uiMessages.append(json)
+            return
+        }
+        forwardA2uiMessageToRenderer(json)
+    }
+
+    private func forwardA2uiMessageToRenderer(_ json: [String: Any]) {
         guard JSONSerialization.isValidJSONObject(json),
               let data = try? JSONSerialization.data(withJSONObject: json),
               let payload = String(data: data, encoding: .utf8)
@@ -1004,6 +1029,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     private func maybeEmitReady() {
         guard !readyEmitted, webkitNavFinished, hostReady else { return }
         readyEmitted = true
+        // Flush any A2UI messages that arrived before host-ready (raw-stdin
+        // ready-race). Replay in arrival order; the renderer handles them
+        // exactly as if they had been delivered post-ready.
+        if !pendingA2uiMessages.isEmpty {
+            let queued = pendingA2uiMessages
+            pendingA2uiMessages.removeAll()
+            for msg in queued {
+                forwardA2uiMessageToRenderer(msg)
+            }
+        }
         var info = getSystemInfo()
         info["type"] = "ready"
         if !config.statusItem, let tip = computeCursorTip() {
