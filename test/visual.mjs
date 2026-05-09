@@ -42,6 +42,7 @@ const FIXTURES = [
   'modal',
   'multiple-choice',
   'checkbox',
+  'slider',
   'text-field-form',
   'tabs',
 ];
