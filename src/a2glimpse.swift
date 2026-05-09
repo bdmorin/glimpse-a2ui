@@ -378,7 +378,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     var hostReady: Bool = false
     var readyEmitted: Bool = false
 
-<<<<<<< HEAD
     // Pre-host-ready buffering for raw-stdin callers. The Node wrapper awaits
     // the stdout `ready` event before writing A2UI messages, so it never
     // races. Raw-stdin callers (e.g. shell pipelines, ad-hoc test harnesses)
@@ -390,11 +389,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     // No bound: if host-ready never fires, that's a real upstream fault and
     // should surface as runaway memory rather than be papered over with a cap.
     var pendingA2uiMessages: [[String: Any]] = []
-=======
+
     // Appearance KVO observer. Production-mode only — test-mode pins light to
     // keep visual goldens deterministic. Phase 4b.
     var appearanceObservation: NSKeyValueObservation?
->>>>>>> 5df33f0 (feat(phase4b-dark-mode): follow macOS appearance live, pin test-mode light)
 
     // Status item mode
     var nsStatusItem: NSStatusItem?
