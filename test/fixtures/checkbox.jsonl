@@ -1,0 +1,3 @@
+{"surfaceUpdate":{"surfaceId":"vr","components":[{"id":"root","component":{"Column":{"children":{"explicitList":["q","ck1","ck2"]}}}},{"id":"q","component":{"Text":{"text":{"literalString":"Acknowledge:"}}}},{"id":"ck1","component":{"CheckBox":{"value":{"path":"/agree"},"label":{"literalString":"I agree to the terms"}}}},{"id":"ck2","component":{"CheckBox":{"value":{"literalBoolean":true},"label":{"literalString":"Subscribe to updates"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"vr","contents":[{"key":"agree","valueBoolean":false}]}}
+{"beginRendering":{"surfaceId":"vr","root":"root"}}

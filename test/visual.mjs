@@ -41,6 +41,7 @@ const FIXTURES = [
   'card-text',
   'modal',
   'multiple-choice',
+  'checkbox',
   'text-field-form',
   'tabs',
 ];
