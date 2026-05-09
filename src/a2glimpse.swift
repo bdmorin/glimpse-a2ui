@@ -378,6 +378,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     var hostReady: Bool = false
     var readyEmitted: Bool = false
 
+<<<<<<< HEAD
     // Pre-host-ready buffering for raw-stdin callers. The Node wrapper awaits
     // the stdout `ready` event before writing A2UI messages, so it never
     // races. Raw-stdin callers (e.g. shell pipelines, ad-hoc test harnesses)
@@ -389,6 +390,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     // No bound: if host-ready never fires, that's a real upstream fault and
     // should surface as runaway memory rather than be papered over with a cap.
     var pendingA2uiMessages: [[String: Any]] = []
+=======
+    // Appearance KVO observer. Production-mode only — test-mode pins light to
+    // keep visual goldens deterministic. Phase 4b.
+    var appearanceObservation: NSKeyValueObservation?
+>>>>>>> 5df33f0 (feat(phase4b-dark-mode): follow macOS appearance live, pin test-mode light)
 
     // Status item mode
     var nsStatusItem: NSStatusItem?
@@ -421,6 +427,70 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             }
         }
         startStdinReader()
+        startAppearanceTracking()
+    }
+
+    // MARK: - Appearance Bridge (Phase 4b — dark mode)
+
+    /// Returns "dark" or "light" from an NSAppearance, defaulting to "light".
+    private func schemeName(for appearance: NSAppearance) -> String {
+        let match = appearance.bestMatch(from: [.darkAqua, .aqua, .vibrantDark, .vibrantLight])
+        switch match {
+        case .darkAqua, .vibrantDark:
+            return "dark"
+        default:
+            return "light"
+        }
+    }
+
+    /// Current effective scheme. In test-mode this is pinned to "light" so
+    /// the visual harness stays deterministic regardless of host system
+    /// appearance.
+    private func currentScheme() -> String {
+        if config.testMode { return "light" }
+        return schemeName(for: NSApp.effectiveAppearance)
+    }
+
+    /// Pushes `document.body.dataset.colorScheme = '<scheme>'` into the host
+    /// page. One-way Swift -> page signal; not exposed on the public stdin
+    /// surface. Safe to call before the page is ready (evaluateJavaScript will
+    /// silently no-op if the body isn't there yet; pushAppearance() is also
+    /// invoked from didFinish navigation as the authoritative initial sync).
+    @MainActor
+    private func pushAppearance() {
+        guard webView != nil else { return }
+        let scheme = currentScheme()
+        // JS-string escape is unnecessary here — the value is one of two
+        // hard-coded literals. Keep the template tight.
+        let js = """
+        (function(){
+          if (!document.body) {
+            document.addEventListener('DOMContentLoaded', function(){
+              document.body.dataset.colorScheme = '\(scheme)';
+            }, { once: true });
+            return;
+          }
+          document.body.dataset.colorScheme = '\(scheme)';
+        })();
+        """
+        webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /// Subscribes to NSApp.effectiveAppearance changes via KVO so live macOS
+    /// dark-mode toggles propagate to the host page within a frame or two.
+    /// In test-mode this is a no-op; the appearance stays pinned to light.
+    @MainActor
+    private func startAppearanceTracking() {
+        guard !config.testMode else { return }
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            // KVO fires on the main thread for AppKit, but assert isolation
+            // explicitly to keep Swift concurrency happy.
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.pushAppearance()
+                }
+            }
+        }
     }
 
     // MARK: - Setup
@@ -1018,6 +1088,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 webView.evaluateJavaScript("window.glimpse.cursorTip = {x: \(tip["x"]!), y: \(tip["y"]!)}", completionHandler: nil)
             }
             webkitNavFinished = true
+            // Push initial appearance now that the page exists. KVO updates
+            // continue from here (production mode only — test-mode pinned).
+            pushAppearance()
             maybeEmitReady()
         }
     }

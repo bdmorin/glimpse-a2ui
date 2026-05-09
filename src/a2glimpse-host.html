@@ -144,6 +144,42 @@
   body:not([data-test-mode]) {
     padding-top: 48px;
   }
+
+  /* Dark-mode token pair. Activated when Swift pushes
+     `document.body.dataset.colorScheme = 'dark'` after detecting
+     NSApp.effectiveAppearance == .darkAqua (and on KVO updates as the user
+     toggles the system setting). When the attribute is absent, the light
+     tokens above apply — no Swift signal is required for basic operation.
+     Test-mode is pinned to light by Swift (does not subscribe to system
+     appearance changes), keeping visual goldens deterministic.
+
+     Tokens were chosen deliberately rather than inverted:
+       - surface: #1c1f24 (Material 3 dark neutral, slightly warm)
+       - surface-container-*: stepped neutrals so Card/Modal still read
+         as elevated against the body background (#0f1115)
+       - primary: #7aa2ff (lightened brand blue for AA contrast on dark
+         surface)
+       - outlines: low-chroma greys that are visible but not loud
+       - elevation: black-toned shadows; dark mode elevations work via
+         tone shift more than shadow, but a faint shadow still helps
+     Phase 4b. */
+  body[data-color-scheme="dark"] {
+    background: #0f1115;
+    color: #e6e8eb;
+    --md-sys-color-primary: #7aa2ff;
+    --md-sys-color-on-primary: #0a1733;
+    --md-sys-color-on-surface: #e6e8eb;
+    --md-sys-color-outline: #4a5160;
+    --md-sys-color-outline-variant: #2a2f38;
+    --md-sys-color-surface: #1c1f24;
+    --md-sys-color-surface-container-low: #1a1d22;
+    --md-sys-color-surface-container-high: #262a31;
+    --md-sys-color-surface-container-highest: #30353d;
+    --md-sys-color-secondary-container: #213056;
+    --md-sys-color-on-secondary-container: #c9d6ff;
+    --md-sys-elevation-level1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 1px rgba(0, 0, 0, 0.30);
+    --md-sys-elevation-level2: 0 4px 12px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.40);
+  }
 </style>
 <style id="a2glimpse-test-mode">
 /* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
