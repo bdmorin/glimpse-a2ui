@@ -136,3 +136,27 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - `scripts/postinstall.mjs` doesn't currently verify the host-html file ends up alongside the binary post-install. Not in scope here, but worth a note if a future packaging change ever decoupled `src/a2glimpse-host.html` from the binary's directory.
 
 ---
+
+## 2026-05-09 ~19:40 — Phase 2b: gate test-only `__test-click` behind `--test-mode`
+
+**Author:** Claude Opus 4.7, worktree sub-agent (`worktree-agent-a646e99e1c9b45bba`)
+**Context:** POC retrospective flagged the synthetic-click path as "useful for CI but should not exist in production command handling unless explicitly gated." Phase 2b in `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` owns the fix. Phase 1 had already added a `--test-mode` flag (and `A2GLIMPSE_TEST_MODE=1` env fallback) for deterministic visual capture; that flag is the natural gate to extend.
+
+**Did:**
+- Audited `handleCommand` in `src/a2glimpse.swift` for test-only paths. Only one exists: `__test-click` (the `__` prefix and synthetic-`.click()` semantics confirm). All other cases (`follow-cursor`, `get-info`, `show`, `title`, `resize`, `close`) are production lifecycle commands.
+- Gated `__test-click` on `config.testMode`. When test-mode is off, the dispatcher logs the rejection to stderr and returns the same `{"error":{"message":"Unknown command type: __test-click"}}` shape it would for any other unrecognized command — no information disclosure that the path exists.
+- Added a `testMode` option to the Node wrapper `open()` in `src/a2glimpse.mjs` so callers can opt in. Production callers that don't pass it cannot reach the synthetic-click path even by writing the JSON shape directly to stdin.
+- Updated `test/test.mjs` to pass `testMode: true` so the smoke test continues to exercise the click round-trip.
+
+**Considered / rejected:**
+- A separate `--allow-test-commands` flag distinct from `--test-mode`. Rejected — the brief is explicit that Phase 1's gate must be reused, and the flag's existing semantics (geometry locking, animation neutralization) already imply "this is a test harness, not a production session." A second flag would split the trust boundary into two switches with no upside.
+- Silently swallowing `__test-click` (return without logging or emitting an error). Rejected — a stdout error matching the unknown-command shape is the right signal for a misconfigured caller, and stderr logging gives the operator a breadcrumb without leaking details over the protocol channel.
+- Removing `__test-click` entirely and switching `test.mjs` to AppleScript-driven real clicks. Out of scope; that's a Phase 1+ rework, not a hardening pass.
+
+**Open / next:**
+- Trust-boundary grep clean: no `"html"`/`"file"`/`"eval"` cases in `src/a2glimpse.swift`. Synthetic-click now requires explicit opt-in.
+- Verification command for the rejection path (documented for future audits):
+  `(printf '{"type":"__test-click","id":"button"}\n{"type":"close"}\n'; sleep 1) | ./src/a2glimpse --hidden --title rejection-test`
+  Expected: stderr `[a2glimpse] __test-click rejected: --test-mode not enabled`; stdout `{"error":{"message":"Unknown command type: __test-click"}}` then `{"type":"closed"}`.
+
+---

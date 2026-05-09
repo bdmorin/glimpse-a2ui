@@ -859,6 +859,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 window.setContentSize(size)
             }
         case "__test-click":
+            // Test-only synthetic-click path. Walks the open-shadow-DOM tree to
+            // find a component by id and dispatches a synthetic .click() on its
+            // primary actionable element. This bypasses real user input and
+            // therefore MUST NOT be reachable from default command dispatch
+            // (Phase 2b — see knowledge/20260509-140000.polish-and-hardening-plan.plan.md).
+            // Gate: requires --test-mode flag or A2GLIMPSE_TEST_MODE=1 env var.
+            guard config.testMode else {
+                log("__test-click rejected: --test-mode not enabled")
+                writeToStdout(["error": ["message": "Unknown command type: __test-click"]])
+                return
+            }
             guard let id = json["id"] as? String,
                   let idData = try? JSONSerialization.data(withJSONObject: [id]),
                   let idArrayJSON = String(data: idData, encoding: .utf8)
