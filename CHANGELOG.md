@@ -1,5 +1,12 @@
 # Changelog
 
+## a2glimpse POC
+
+- **Hardfork**: Rename the project surface to `a2glimpse` while preserving Glimpse lineage.
+- **Breaking**: Remove the public HTML, file, and eval protocol. The POC accepts A2UI v0.8 JSONL only.
+- **Feature**: Add a vendored Lit v0.8 renderer host and a Mac-only native appliance that emits `userAction` events on stdout.
+- **Scope**: Single-surface, macOS-only spike. Linux/Windows parity is intentionally deferred.
+
 ## 0.8.0
 
 - **Breaking**: The pi companion extension is no longer auto-registered. It's moved to `examples/companion/` — add it manually to your pi extensions config if you want it.
