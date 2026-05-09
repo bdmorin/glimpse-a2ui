@@ -1,6 +1,6 @@
-# Compiled binary (do not ignore src/glimpse.swift or JS wrappers)
-src/glimpse
+# Compiled binary (do not ignore src/a2glimpse.swift or JS wrappers)
 src/a2glimpse
+src/glimpse
 
 # Linux build output
 src/linux/target/

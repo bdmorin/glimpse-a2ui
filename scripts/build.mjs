@@ -15,7 +15,7 @@ function run(command, args, extraOptions = {}) {
 
 switch (target) {
   case 'darwin':
-    run('swiftc', ['-O', 'src/glimpse.swift', '-o', 'src/a2glimpse']);
+    run('swiftc', ['-O', 'src/a2glimpse.swift', '-o', 'src/a2glimpse']);
     break;
 
   case 'linux':

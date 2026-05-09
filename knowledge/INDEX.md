@@ -2,6 +2,10 @@
 
 Durable reference material for this fork. Read these before touching code in a new session.
 
+## Append-Only Narrative
+
+- [DEV_LOG.md](DEV_LOG.md) — session-by-session rationale, alternatives weighed, deliberate non-actions. Read recent entries to understand current state. Append when finishing meaningful work; never edit past entries.
+
 ## Pre-Implementation Baseline (2026-05-09)
 
 - [A2UI Protocol Overview](20260509-162039.a2ui-protocol-overview.knowledge.md) — what A2UI is, who owns it, security model, repo layout. **Read first.**

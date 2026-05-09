@@ -25,7 +25,7 @@ function resolveNativeHost() {
   return {
     path: join(__dirname, 'a2glimpse'),
     platform: 'darwin',
-    buildHint: "Run 'npm run build:macos' or 'swiftc -O src/glimpse.swift -o src/a2glimpse'",
+    buildHint: "Run 'npm run build:macos' or 'swiftc -O src/a2glimpse.swift -o src/a2glimpse'",
   };
 }
 
