@@ -61,7 +61,10 @@ console.log('a2glimpse integration smoke test\n');
 
 let win;
 try {
-  win = open({ title: 'a2glimpse test', width: 420, height: 260, hidden: true });
+  // testMode: required to enable the synthetic-click (`_testClick`) path —
+  // gated in the Swift dispatcher (Phase 2b). Without it `__test-click` is
+  // rejected as an unknown command.
+  win = open({ title: 'a2glimpse test', width: 420, height: 260, hidden: true, testMode: true });
   pass('Window opened');
 
   await waitFor(win, 'ready');

@@ -200,6 +200,10 @@ export function open(options = {}) {
   if (options.cursorAnchor) args.push('--cursor-anchor', options.cursorAnchor);
   if (options.followMode != null) args.push('--follow-mode', options.followMode);
   if (options.statusItem) args.push('--status-item');
+  // Test-mode gate (Phase 2b). Required for the synthetic-click (`_testClick`)
+  // path to function — default dispatch rejects `__test-click` as unknown.
+  // Do not enable this from production callers.
+  if (options.testMode) args.push('--test-mode');
 
   const proc = spawn(host.path, args, { stdio: ['pipe', 'pipe', 'inherit'] });
   return new A2GlimpseWindow(proc);
