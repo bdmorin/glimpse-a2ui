@@ -9,6 +9,8 @@ Durable reference material for this fork. Read these before touching code in a n
 - [log/](log/) — per-slice DEV_LOG / AUDIT_LOG fragments written by parallel worktree agents. Aggregated into DEV_LOG.md / AUDIT_LOG.md at merge time. Convention: [parallel-agent log fragments](20260509-145843.parallel-agent-log-fragments.knowledge.md).
 - [Worktree Isolation Verification](20260509-152436.worktree-isolation-verification.knowledge.md) — MANDATORY first-action check for worktree-dispatched agents; HARD_FAIL if not in an isolated worktree. Codifies the Phase 3 root-cause finding.
 - [Vendored Renderer Pathologies](20260509-154525.vendored-renderer-pathologies.knowledge.md) — three levers (CSS custom properties, additionalStyles, prototype patching) for reaching shadow-DOM components without touching the IIFE. Documents two confirmed renderer bugs (Tabs theme-gap, MultipleChoice schema/element mismatch).
+- [Renderer Re-vendor Runbook](20260509-172345.renderer-revendor-runbook.knowledge.md) — step-by-step procedure for adopting a new v0.8.x bugfix bundle from upstream `@a2ui/lit`. Pinning policy, trust-boundary diff check, workaround re-verification, visual re-bless protocol, rollback. **LIKELY (unproven) — first operator edits in place.**
+- [Renderer Bundle Pins](renderer-bundle-pins.md) — append-only ledger of every vendored bundle that has shipped. Pair with the runbook on every re-vendor.
 - [Agent Dispatch Procedure](20260509-160946.agent-dispatch-procedure.knowledge.md) — end-to-end runbook for orchestrator sessions dispatching worktree-isolated sub-agents. Synthesizes the three companion conventions into a single playbook covering pre-dispatch checks, prompt template, monitoring, merge protocol, recovery, and outcome vocabulary.
 
 ## Active Plan
