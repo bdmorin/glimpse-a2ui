@@ -25,7 +25,7 @@ POC scope is deliberately small. Out of scope until further notice:
 - Material Symbols / icon bundling.
 - Renderer compliance suite (only smoke fixtures exist).
 - `.app` packaging, signing, notarization.
-- Linux / Windows backends. (`src/linux/`, `src/chromium-backend.mjs`, `native/windows/` are upstream artifacts kept for reference; do not extend them.)
+- Linux / Windows backends. (Upstream Linux/Windows source was removed in repo maintenance 2026-05-09; pull from `git log --follow` if you ever need the baseline.)
 - MCP server, agent skill, or coding-agent hooks (next iteration).
 
 If a request asks for any of the above, surface it as scope expansion before implementing.
@@ -70,7 +70,7 @@ HANDOFF.md                  Pre-POC handoff. Historical; superseded by
                             knowledge/20260509-130112.poc-retrospective....
 ```
 
-Upstream-residue directories (`src/linux/`, `native/windows/`, `examples/companion/`, `skills/glimpse/`) are **not** maintained here. Do not edit unless explicitly instructed.
+Upstream-residue directories were deleted in repo maintenance on 2026-05-09 (see `knowledge/AUDIT_LOG.md`). Recover from `git log` if needed.
 
 ## Wire Protocol (Public Surface)
 

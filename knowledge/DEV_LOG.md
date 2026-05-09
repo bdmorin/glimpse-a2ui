@@ -38,3 +38,28 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - Next-iteration backlog (from POC retrospective, not this session's scope): drop cwd renderer fallback, gate test-only synthetic-click path, wait for renderer-host ready (not just WebKit ready), define an "agent control surface" component subset, MCP server wrapper, agent skill.
 
 ---
+
+## 2026-05-09 ~14:00 — Phase 0 maintenance + polish/hardening plan
+
+**Author:** Claude (Opus 4.7), orchestrator, with Brian
+**Context:** Brian asked to prepare for polishing the interface window and enhancing the A2UI implementation framework. Visual regression via `/snap-happy` (routed through mcporter, per the skill-as-MCP-shim retro). Plan calls for git worktrees and parallel implementation agents.
+
+**Did:**
+- Reflected scope/decisions back: framework-hardening first, v0.8 pinned, whole-component-set goal with bail-and-log pragma, host-targeted (not cross-host), main session owns merges.
+- Phase 0 repo maintenance: `git rm` on `src/linux/`, `src/chromium-backend.mjs`, `native/`, `examples/`, `skills/`. Updated `AGENTS.md` references. Trimmed `webview2`/`gtk` keywords from `package.json`. Smoke test green pre- and post-delete.
+- Created `knowledge/AUDIT_LOG.md` as the who/what/where ledger (sister to this file).
+- Wrote `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` as the self-contained brief for worktree agents (phases, conventions, bail rules).
+- Updated `knowledge/INDEX.md` to point at AUDIT_LOG and the active plan.
+
+**Considered / rejected:**
+- Quarantining residue under `_upstream-archive/` instead of deleting. Rejected — Brian's hardfork stance and the existence of `git log --follow` make outright deletion cleaner.
+- Doing framework hardening (Brian's stated "first thread") before the visual-regression harness. Reordered to do harness first within the same priority because hardening worktrees need the visual safety net to avoid silent regressions. Confirmed with Brian.
+- v0.8 → v0.9 pivot. Rejected — Brian wants stable target; v0.8 retro work first.
+- Cross-host visual parity. Out of scope; this work is optimized for Brian's machine specifically.
+
+**Open / next:**
+- Phase 0 changes uncommitted; will commit when Brian green-lights.
+- Phase 1 (visual-regression harness) is next, sequential, single agent.
+- Phase 2 hardening worktrees (`wt/harden-renderer-load`, `wt/harden-test-gating`, `wt/harden-ready-signal`) ready to dispatch once harness exists.
+
+---

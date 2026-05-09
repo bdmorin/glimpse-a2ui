@@ -5,6 +5,11 @@ Durable reference material for this fork. Read these before touching code in a n
 ## Append-Only Narrative
 
 - [DEV_LOG.md](DEV_LOG.md) — session-by-session rationale, alternatives weighed, deliberate non-actions. Read recent entries to understand current state. Append when finishing meaningful work; never edit past entries.
+- [AUDIT_LOG.md](AUDIT_LOG.md) — who/what/where ledger of agent dispatches, worktree work, blockers, deferrals. Sister to DEV_LOG; AUDIT_LOG owns lineage, DEV_LOG owns rationale.
+
+## Active Plan
+
+- [Polish + Hardening Plan (2026-05-09)](20260509-140000.polish-and-hardening-plan.plan.md) — phased plan with worktree assignments, conventions, and bail rules. **Read before dispatching worktree agents.**
 
 ## Pre-Implementation Baseline (2026-05-09)
 
