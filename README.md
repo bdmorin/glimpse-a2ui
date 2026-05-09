@@ -9,8 +9,10 @@ This is a spike, not a finished product. It is intentionally allowed to fail in 
 ## Install / Build
 
 ```bash
-npm install
-npm run build:macos
+git clone https://github.com/bdmorin/glimpse-a2ui
+cd glimpse-a2ui
+npm install              # postinstall compiles src/a2glimpse via swiftc
+npm link                 # puts `a2glimpse` and `a2glimpse-mcp` on PATH
 ```
 
 The native binary is built to:
@@ -18,6 +20,8 @@ The native binary is built to:
 ```bash
 src/a2glimpse
 ```
+
+Local-clone is the only supported install path. Not on npm; not planning to be.
 
 ## CLI
 
