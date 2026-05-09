@@ -160,3 +160,30 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
   Expected: stderr `[a2glimpse] __test-click rejected: --test-mode not enabled`; stdout `{"error":{"message":"Unknown command type: __test-click"}}` then `{"type":"closed"}`.
 
 ---
+
+## 2026-05-09 ~14:43 — Phase 2c renderer-host ready signal
+
+**Author:** Claude (Opus 4.7), worktree agent in `worktree-agent-aa247821a8108b3c7`
+**Context:** Phase 2c of the polish-and-hardening plan (`wt/harden-ready-signal`). POC retrospective flagged that `ready` had two meanings: WebKit `didFinish` versus the renderer host actually being able to receive `surfaceUpdate` messages. Today the binary emits stdout `ready` from `didFinish`, which means a downstream agent that immediately writes `surfaceUpdate` can hit a window where the Lit `<a2ui-surface>` element isn't registered yet and `window.a2glimpse.dispatch` doesn't exist. Brief: don't ship `ready` until both signals are true; never paper over the host-ready signal failing to arrive (no fallback timer).
+
+**Did:**
+- Read the vendored host bundle. Found that the IIFE already dispatches a `CustomEvent("a2glimpse-host-ready")` from `A2GlimpseApp.connectedCallback` immediately after wiring `window.a2glimpse.dispatch` and after `customElements.define("a2glimpse-app", ...)`. That's the exact contract — no IIFE edits needed.
+- Added `<script id="a2glimpse-host-ready-shim">` to `src/a2glimpse-host.html`, *outside* the IIFE (after its closing `</script>`, before `</body>`). It listens for the CustomEvent and posts `{__a2glimpse_host_ready: true}` to `webkit.messageHandlers.glimpse`. Defensive fallback: a microtask-deferred check of `typeof window.a2glimpse.dispatch === 'function'` covers the script-ordering edge case where the event fires before the listener attaches. Posting is guarded against double-emit. No new global state, no new public stdin command.
+- In `src/a2glimpse.swift`: added `webkitNavFinished`, `hostReady`, `readyEmitted` flags on `AppDelegate`, plus a `@MainActor maybeEmitReady()` helper. `didFinish` now flips `webkitNavFinished` and calls the helper instead of writing `ready` directly. The script-message handler recognizes `__a2glimpse_host_ready`, flips `hostReady`, and calls the helper. The helper is idempotent (`readyEmitted` guard). `getSystemInfo()` is still computed at emission time, so `cursorTip` is fresh.
+- `src/a2glimpse.mjs` consumer needs no change — same JSONL `{type:"ready", ...}` shape.
+- Built, ran `npm test` — green. Ran `npm run test:visual` — fails because the host-html edit changes the renderer hash from `a0ce316e1b7e` to `936f54cfb1c3`. Cross-hash `compare` of every old vs new golden: 0–8 px out of 153,600 (≤0.0052%), well below the 0.1% threshold. The visuals are bit-equal modulo capture jitter — only the hash bucket moved. Re-blessed at the new hash, deleted the old hash dir, and ran `node test/visual.mjs` three times back-to-back: 6/6 PASS each run, all at 0.0000% noise (down from 0–8 px in Phase 1's runs — tighter `ready` means less capture-time variance).
+- CLI acceptance probe: spawned a fresh `a2glimpse --test-mode --no-show`, waited for `ready`, immediately wrote `test/fixtures/button-only.jsonl` lines. Renderer accepted them; no error; clean shutdown. A separate probe with a deliberately malformed component shape produced an immediate schema-validation error from the renderer at `t+2ms` after `ready` — strong evidence the surface is genuinely live at `ready`-time, not just navigated.
+
+**Considered / rejected:**
+- **Hooking inside the IIFE.** The brief makes the IIFE read-only and says STOP if a hook requires it. The IIFE already exposes the right hook (`a2glimpse-host-ready` CustomEvent), so no edit needed.
+- **Adding a fallback timer that emits `ready` after N seconds even without host-ready.** Explicitly forbidden by the brief: "Don't paper over timeouts." If the host-ready message never arrives, that's a real bug to surface, not work around. The shim does have one defensive belt-and-suspenders microtask check for the listener-ordering edge case, but that's a same-tick guard, not a timeout.
+- **Defining a new bridge name (`a2glimpseHost` etc.).** Rejected — reusing the existing `glimpse` messageHandler keeps the Swift handler surface small. The internal payload `{__a2glimpse_host_ready: true}` is namespaced like `__glimpse_close` already is.
+- **Optional harness-settle reduction (drop the 1.5s settle in `test/visual.mjs`).** NOT taken. Visual harness is already 100% stable at 0.0000% noise; cutting the settle is value-neutral and changing test infra mid-phase risks regressions for a future agent. Left as a future tightening pass; capture-time noise floor proves `ready` is now strong enough to support it.
+- **Re-blessing without the cross-hash sanity check.** Rejected — the brief warns explicitly against silent re-blessing. Confirmed cross-hash visuals are within noise floor before re-blessing.
+
+**Open / next:**
+- Phase 2c acceptance met: smoke green; visual harness green 6/6 × 3 runs at 0.0000%; CLI probe proves `ready` now means the surface can receive `surfaceUpdate`.
+- Sister Phase 2 worktrees (`wt/harden-renderer-load`, `wt/harden-test-gating`) are independent of this slice; orchestrator owns merge.
+- Future tightening: `test/visual.mjs` 1.5s settle could likely become 0–200ms now that `ready` is a strong signal. Punted to a polish pass.
+
+---

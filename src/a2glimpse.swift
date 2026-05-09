@@ -364,6 +364,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
         }
     }
 
+    // Ready coordination — stdout `ready` is emitted only after BOTH the
+    // WKWebView finishes navigation AND the renderer host posts its
+    // a2glimpse-host-ready bridge message. Either signal alone is insufficient:
+    // WebKit-ready means the page bytes loaded; host-ready means the Lit
+    // surface element is registered and window.a2glimpse.dispatch is wired.
+    // Don't ship `ready` to consumers until messages can actually be processed.
+    var webkitNavFinished: Bool = false
+    var hostReady: Bool = false
+    var readyEmitted: Bool = false
+
     // Status item mode
     var nsStatusItem: NSStatusItem?
     var popover: NSPopover?
@@ -963,14 +973,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                     window.makeFirstResponder(webView)
                 }
             }
-            var info = getSystemInfo()
-            info["type"] = "ready"
             if !config.statusItem, let tip = computeCursorTip() {
-                info["cursorTip"] = tip
                 webView.evaluateJavaScript("window.glimpse.cursorTip = {x: \(tip["x"]!), y: \(tip["y"]!)}", completionHandler: nil)
             }
-            writeToStdout(info)
+            webkitNavFinished = true
+            maybeEmitReady()
         }
+    }
+
+    /// Emits stdout `ready` once both WebKit navigation has finished AND the
+    /// renderer host has signalled it is ready to receive A2UI messages.
+    /// Idempotent — guards against double-emit if either signal arrives twice.
+    @MainActor
+    private func maybeEmitReady() {
+        guard !readyEmitted, webkitNavFinished, hostReady else { return }
+        readyEmitted = true
+        var info = getSystemInfo()
+        info["type"] = "ready"
+        if !config.statusItem, let tip = computeCursorTip() {
+            info["cursorTip"] = tip
+        }
+        writeToStdout(info)
     }
 
     // MARK: - WKScriptMessageHandler
@@ -987,6 +1010,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
 
             if json["__glimpse_close"] as? Bool == true {
                 closeAndExit()
+                return
+            }
+
+            if json["__a2glimpse_host_ready"] as? Bool == true {
+                // Renderer-host-ready bridge: the Lit surface element has been
+                // defined and window.a2glimpse.dispatch is wired. Combined with
+                // WebKit didFinish, this lets us emit stdout `ready` only when
+                // a downstream consumer can actually send a surfaceUpdate.
+                hostReady = true
+                maybeEmitReady()
                 return
             }
 

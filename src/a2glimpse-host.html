@@ -10856,5 +10856,46 @@ lit-html/directives/style-map.js:
    *)
 */
 </script>
+<script id="a2glimpse-host-ready-shim">
+/*
+ * Wrapper shim — runs OUTSIDE the vendored Lit IIFE.
+ *
+ * Bridges the IIFE's "a2glimpse-host-ready" CustomEvent (dispatched from
+ * A2GlimpseApp.connectedCallback after window.a2glimpse.dispatch is wired and
+ * customElements have been defined) to Swift via the existing webkit
+ * messageHandler. Swift uses this to defer stdout `ready` emission until the
+ * renderer host can actually receive surfaceUpdate messages — not just until
+ * WebKit finishes navigation. Two distinct events, two emission points.
+ *
+ * Trust boundary: one-way page -> Swift, no new public stdin command.
+ */
+(function () {
+  var posted = false;
+  function postHostReady() {
+    if (posted) return;
+    posted = true;
+    try {
+      window.webkit.messageHandlers.glimpse.postMessage(
+        JSON.stringify({ __a2glimpse_host_ready: true })
+      );
+    } catch (err) {
+      // Bridge unavailable (e.g. opened directly in a non-WKWebView context).
+      // Swallow — Swift will only consult this signal when it expects it.
+    }
+  }
+  // Primary path: IIFE dispatches this when the surface element is registered
+  // and window.a2glimpse.dispatch has been wired.
+  window.addEventListener('a2glimpse-host-ready', postHostReady, { once: true });
+  // Fallback: if the event already fired before this listener attached
+  // (script ordering edge case), poll once on next tick. window.a2glimpse is
+  // assigned in the same callback that dispatches the event, so its presence
+  // is a reliable proxy.
+  Promise.resolve().then(function () {
+    if (typeof window.a2glimpse !== 'undefined' && typeof window.a2glimpse.dispatch === 'function') {
+      postHostReady();
+    }
+  });
+})();
+</script>
 </body>
 </html>

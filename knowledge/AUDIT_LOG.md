@@ -97,3 +97,19 @@ Never edit past entries. Correct with a follow-up entry that references the prio
 **Notes:** Audit confirmed `__test-click` is the only test-only command in the dispatcher. Default-dispatch rejection emits the unknown-command error shape — no path disclosure. Acceptance: `npm test` 7/7 ✓; `npm run test:visual` 6/6 ✓ (worst diff 0.0052%, threshold 0.1%); manual rejection verified with `(printf '{"type":"__test-click","id":"button"}\n{"type":"close"}\n'; sleep 1) | ./src/a2glimpse --hidden --title rejection-test` → `{"error":{"message":"Unknown command type: __test-click"}}`. Trust-boundary grep clean: no `"html"`/`"file"`/`"eval"` cases reintroduced.
 
 ---
+
+## 2026-05-09 ~14:43 — Phase 2c renderer-host ready signal
+**Agent:** Claude Opus 4.7 (1M ctx), worktree sub-agent
+**Worktree:** `worktree-agent-aa247821a8108b3c7` (off `main` @ 351775c, fast-forwarded to 096d310 before work)
+**Lineage:** Phase 2c of `knowledge/20260509-140000.polish-and-hardening-plan.plan.md` (`wt/harden-ready-signal`); addresses POC-retro finding "ready has two meanings" (`knowledge/20260509-130112.poc-retrospective.retrospective.md`).
+**Action:** Added wrapper-shim `<script id="a2glimpse-host-ready-shim">` (outside the vendored Lit IIFE) in `src/a2glimpse-host.html` that listens for the IIFE's existing `a2glimpse-host-ready` CustomEvent and posts `{__a2glimpse_host_ready: true}` via `webkit.messageHandlers.glimpse`. In `src/a2glimpse.swift` added `webkitNavFinished` / `hostReady` / `readyEmitted` state and a `maybeEmitReady()` helper; stdout `ready` now emits only when both signals are true, idempotent. WebKit `didFinish` no longer emits `ready` directly. `src/a2glimpse.mjs` needs no change — same JSONL shape, just later. Re-blessed visual goldens at new renderer hash `936f54cfb1c3` (host-html edit shifts the hash key; cross-hash compare vs prior `a0ce316e1b7e` goldens shows 0–8 px out of 153,600 — visuals are unchanged, only the bucket moved).
+**Outcome:** OK
+**Artifacts:**
+- `src/a2glimpse-host.html` (added wrapper-shim script after IIFE close; vendored IIFE untouched)
+- `src/a2glimpse.swift` (ready coordination state + `maybeEmitReady()` + `__a2glimpse_host_ready` message handler; refactored `didFinish`)
+- `test/__snapshots__/936f54cfb1c3/{button-only,card-text,modal,multiple-choice,text-field-form,tabs}.png` (re-blessed goldens, hash bump only)
+- `test/__snapshots__/a0ce316e1b7e/` (deleted — stale renderer hash)
+- `knowledge/DEV_LOG.md` (entry 2026-05-09 ~14:43)
+**Notes:** Trust boundary unchanged — the new bridge message is a one-way page→Swift signal inside the trusted process, not exposed on stdin. Vendored Lit IIFE remained read-only; it already dispatched `a2glimpse-host-ready` after `customElements.define` and `window.a2glimpse` wiring (line 10701), which is exactly the contract Phase 2c needed. Acceptance: `npm test` green; `npm run test:visual` green 6/6 across 3 back-to-back runs (all 0.0000% noise — `ready` is now tighter, capture-time variance dropped from 0–8 px to 0 px); CLI probe sent a valid fixture immediately after `ready` and the renderer accepted it without error (and a separate probe with a malformed payload produced an immediate schema-validation error from the renderer, proving the surface is genuinely live at `ready`-time, not merely navigated). Optional harness-settle reduction NOT taken — visual harness is already 100% stable at 0.0000%, value-neutral to change; left for a future tightening pass.
+
+---
