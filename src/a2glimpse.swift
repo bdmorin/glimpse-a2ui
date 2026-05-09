@@ -139,6 +139,10 @@ struct Config {
     var openLinksApp: String? = nil
     var statusItem: Bool = false
     var noDock: Bool = false
+    // Test mode locks geometry for deterministic visual capture.
+    // It is geometry/timing only — it MUST NOT add new command surfaces.
+    // Activated via --test-mode flag or A2GLIMPSE_TEST_MODE=1 env var.
+    var testMode: Bool = false
 }
 
 func parseArgs() -> Config {
@@ -200,10 +204,40 @@ func parseArgs() -> Config {
             config.statusItem = true
         case "--no-dock":
             config.noDock = true
+        case "--test-mode":
+            config.testMode = true
         default:
             break
         }
         i += 1
+    }
+    // Env-var fallback for test mode (mirrors --test-mode flag).
+    if let envTest = ProcessInfo.processInfo.environment["A2GLIMPSE_TEST_MODE"],
+       envTest == "1" || envTest.lowercased() == "true" {
+        config.testMode = true
+    }
+    // Test mode locks geometry deterministically for visual capture.
+    if config.testMode {
+        config.followCursor = false
+        config.frameless = false
+        config.transparent = false
+        config.clickThrough = false
+        config.statusItem = false
+        config.noDock = false
+        config.hidden = false
+        config.cursorAnchor = nil
+        // Default deterministic size if caller didn't specify.
+        // Detect explicit width/height to leave caller-provided sizing intact.
+        var explicitW = false
+        var explicitH = false
+        var k = 1
+        while k < args.count {
+            if args[k] == "--width" { explicitW = true }
+            if args[k] == "--height" { explicitH = true }
+            k += 1
+        }
+        if !explicitW { config.width = 480 }
+        if !explicitH { config.height = 320 }
     }
     // When anchor is set, offsets default to 0 (fine-tuning only).
     // The non-zero defaults (20, -20) are for offset-only mode.
@@ -700,6 +734,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
     func handleCommand(type: String, json: [String: Any]) {
         switch type {
         case "follow-cursor":
+            if config.testMode {
+                log("follow-cursor ignored in --test-mode (geometry locked)")
+                return
+            }
             guard !config.statusItem else {
                 log("follow-cursor not supported in status-item mode")
                 return
@@ -784,6 +822,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 window.title = title
             }
         case "resize":
+            if config.testMode {
+                log("resize ignored in --test-mode (geometry locked)")
+                return
+            }
             let w = json["width"] as? Int ?? config.width
             let h = json["height"] as? Int ?? config.height
             let size = NSSize(width: w, height: h)
