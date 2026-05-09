@@ -78,6 +78,43 @@ Stdout emits:
 - No public HTML, file, or eval command.
 - The Lit renderer host is vendored as `src/a2glimpse-host.html` for the POC.
 
+## MCP Bridge (`a2glimpse-mcp`)
+
+`a2glimpse` is a stdin-driven appliance, not a long-lived MCP server. The bridge `a2glimpse-mcp` (in `bin/`) wraps the binary so any MCP-aware agent can drive it via tool calls. Lifetime is delegated to [`mcporter`](https://github.com/openclaw/mcporter)'s daemon (`lifecycle: "keep-alive"`) — the bridge stays warm across calls; the binary is held as the bridge's child process.
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| `surface_update` | Forward an A2UI v0.8 surfaceUpdate |
+| `data_model_update` | Forward a dataModelUpdate |
+| `begin_rendering` | Forward a beginRendering |
+| `delete_surface` | Forward a deleteSurface |
+| `await_action` | Block until next userAction (or timeout) |
+| `get_info` | Return child geometry / system info |
+| `close` | Tear down the child window |
+
+### mcporter config
+
+```json
+"a2glimpse": {
+  "command": "a2glimpse-mcp",
+  "lifecycle": "keep-alive"
+}
+```
+
+That's the entire registration story. Any agent that can shell out to `mcporter call a2glimpse.<tool>` can drive this.
+
+### Trust boundary
+
+The bridge IS the trust boundary for MCP-driven flows. Every A2UI message is validated before forwarding to the child's stdin: top-level key must be one of `{surfaceUpdate, dataModelUpdate, beginRendering, deleteSurface}`, and any `html` / `file` / `eval` key at any depth is rejected loudly. The renderer owns the rest of v0.8 schema semantics.
+
+### Implementation
+
+- `src/mcp/a2glimpse-mcp.ts` — single-file TypeScript, ~330 lines. Node 22.18+ strips types natively at runtime.
+- `bin/a2glimpse-mcp.mjs` — entry shim.
+- `test/mcp.mjs` — integration test against a fake-a2glimpse stdin/stdout child. Run with `npm run test:mcp`.
+
 ## Packaging (`.app` bundle)
 
 `a2glimpse` can be packaged as a Mac `.app` bundle for distribution and future

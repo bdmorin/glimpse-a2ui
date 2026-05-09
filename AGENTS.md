@@ -118,8 +118,9 @@ stderr is debug only (`[a2glimpse] ...`), not part of the protocol.
 ### Code
 
 - **Single-file Swift.** All native code lives in `src/a2glimpse.swift`. Splitting is anti-pattern.
-- **Zero runtime deps.** Node wrapper uses only `node:` built-ins. Swift uses only Cocoa / WebKit / Foundation.
-- **ESM only** in Node-land. No CJS, no bundler.
+- **Zero runtime deps for the binary.** Node wrapper (`src/a2glimpse.mjs`) uses only `node:` built-ins. Swift uses only Cocoa / WebKit / Foundation.
+- **MCP bridge carve-out.** `src/mcp/a2glimpse-mcp.ts` (the MCP bridge) takes one runtime dep: `@modelcontextprotocol/sdk`. The carve-out exists because hand-rolling the MCP protocol is more code than the SDK and would track upstream spec churn. The carve-out is gated to the bridge — the binary, the Node wrapper, and CLI entry stay zero-dep.
+- **ESM only** in Node-land. No CJS, no bundler. TypeScript is allowed but only as type-stripped source (Node 22.18+ native strip-types). No compiled JS in the repo.
 - **Protocol-first.** New features land as JSONL message types; the Node wrapper is sugar.
 - **Compile on install.** `postinstall` runs swiftc. Forking the Swift source is supported.
 - **Trust boundary is load-bearing.** No path that reintroduces arbitrary HTML/JS execution from stdin reaches `main`.
