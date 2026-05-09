@@ -192,3 +192,29 @@ Keep entries short. Link out to `knowledge/*.md` files for depth.
 - Future tightening: `test/visual.mjs` 1.5s settle could likely become 0–200ms now that `ready` is a strong signal. Punted to a polish pass.
 
 ---
+
+## 2026-05-09 ~15:24 — Phase 3 isolation root-cause + HARD_FAIL convention
+
+**Author:** Claude (Opus 4.7), orchestrator, with Brian
+**Context:** Phase 3 dispatched 7 parallel worktree agents. Two (textfield-slider, usagehint-markdown) committed directly to `main` instead of their worktree branches. Initial diagnosis blamed the `Agent` runtime for "silently failing isolation." Brian invoked `/superpowers:systematic-debugging` and pushed back: "we should read the thinking in the session log and see how it got there." That changed the picture entirely.
+
+**Did:**
+- Read both failed agents' transcripts via `jq` filtering of the per-agent JSONL output files. Compared command-by-command against the icon (success) agent's transcript.
+- Found the actual root cause: the runtime DID create worktrees and assign them as the agents' default CWD. But every Phase 3 prompt opened with `for /Users/brahn/src/github.com/bdmorin/glimpse-a2ui`. Agents read that as "project path" and prepended `cd /Users/brahn/src/github.com/bdmorin/glimpse-a2ui` to most/all of their Bash commands — overriding their runtime-assigned worktree CWD per command (Bash sessions are fresh per-invocation in Claude Code). Successful agents got lucky: at least one of their commands didn't include the `cd`, ran in the runtime CWD = worktree, and committed from there. Failed agents kept `cd`-ing for every command including the commit, landing work on main's branch. The runtime then auto-removed their now-empty worktree branches (which is why `git worktree list` shows no entry post-hoc and earlier mistook this for "isolation never happened").
+- Refined the failure-mode taxonomy: Mode A (stale-ref worktree, `351775c` from session start cached by runtime) is a real runtime issue that agents already self-correct via `git rebase`. Mode B (worktree bypassed via prompt-induced `cd`) is a prompt-layer issue, fixable entirely in MY dispatch prompts.
+- Wrote `knowledge/20260509-152436.worktree-isolation-verification.knowledge.md` codifying a mandatory FIRST ACTION isolation-verification check. If `pwd` / `git rev-parse --git-dir` don't confirm worktree isolation, agent writes `outcome: HARD_FAIL` and stops. No self-correction.
+- Updated the polish-and-hardening plan's conventions section to require the new check and forbid `cd` to absolute repo paths.
+- Updated INDEX.md to point at the new convention.
+
+**Considered / rejected:**
+- **Self-correction (have agents `git worktree add` themselves if missing).** Rejected per Brian. Concurrent self-creation reproduces the original race; HARD_FAIL surfaces dispatch failures cleanly to the orchestrator.
+- **Trying to fix the `Agent` runtime.** Rejected — it's Anthropic's tool, not ours. The runtime does its job; the bug was at our prompt layer.
+- **Continuing to blame the runtime.** Rejected after reading transcripts. The successful icon agent had the same prompt structure but happened to break the `cd` habit early enough. Statistical luck, not policy difference.
+- **Treating Mode A and Mode B as the same issue.** Rejected — they have distinct mechanisms and distinct fixes. Conflating them produced the earlier "isolation silently fails" framing that was technically incorrect.
+
+**Open / next:**
+- Phase 3 multiplechoice-checkbox is the last in-flight agent. No new dispatches until it finishes.
+- When in-flight finishes: write knowledge/log fragments for in-progress recovery work, propose retries for textfield-slider and usagehint with the new convention, plan Phase 3 merge / re-bless.
+- The `Agent` runtime's session-start HEAD caching (Mode A) is a real issue worth filing upstream eventually. Out of scope for this work.
+
+---
