@@ -29,3 +29,6 @@ review.md
 test/__snapshots__/*/diffs/
 test/__snapshots__/*/*.actual.png
 test/__snapshots__/.tmp/
+
+# Worktrees managed by Agent isolation:worktree
+.claude/worktrees/
