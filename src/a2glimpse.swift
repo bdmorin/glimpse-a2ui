@@ -590,6 +590,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             let testScript = WKUserScript(source: testModeJS, injectionTime: .atDocumentStart, forMainFrameOnly: true)
             ucc.addUserScript(testScript)
         }
+        if config.transparent {
+            // "Minority Report" mode signal: tells the host CSS to drop body/html
+            // backgrounds so the WKWebView's transparency lets the desktop show
+            // through. Components still paint themselves (cards, buttons, etc.),
+            // but the CANVAS is gone — controls float on the desktop. Pairs with
+            // --frameless for the no-window-chrome look. One-way Swift -> page
+            // signal; not a new public stdin command.
+            let transparentJS = """
+            (function() {
+              function activate() {
+                if (document.body) {
+                  document.body.dataset.transparent = '';
+                  document.documentElement.dataset.transparent = '';
+                } else {
+                  document.addEventListener('DOMContentLoaded', activate, { once: true });
+                }
+              }
+              activate();
+            })();
+            """
+            let transparentScript = WKUserScript(source: transparentJS, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+            ucc.addUserScript(transparentScript)
+        }
         ucc.add(self, name: "glimpse")
         let wkConfig = WKWebViewConfiguration()
         wkConfig.userContentController = ucc

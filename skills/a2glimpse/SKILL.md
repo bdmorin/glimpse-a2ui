@@ -294,6 +294,18 @@ A2UI v0.8 components nest under `{"id":"<id>","component":{"<Type>":{...}}}`. Th
 
 For deeper renderer details (CSS variables, `additionalStyles`, etc.), see `knowledge/20260509-154525.vendored-renderer-pathologies.knowledge.md`. You almost never need to go there.
 
+## Iconography
+
+A2UI's `Icon` component takes a `name` (an A2UI `StringValue`) whose value is a Material Symbols Outlined ligature in **snake_case**. The full ~3000-glyph Outlined catalog is bundled with the binary, so any icon documented at <https://fonts.google.com/icons> works.
+
+```json
+{"id":"chk","component":{"Icon":{"name":{"literalString":"check_circle"}}}}
+```
+
+Use `{"path":"/..."}` instead of `{"literalString":"..."}` to bind the icon name to the data model.
+
+For a curated quick-reference organized by agent intent (status, code/dev, file/IO, navigation, data, communication, media, editing, people, misc utility), see `MATERIAL-ICONS.md` (sibling to this file). If a glyph renders as the literal snake_case text, the name is misspelled — the bundled font falls back to the ligature key.
+
 ## Cross-platform note (Codex, Cursor, others)
 
 This skill uses standard SKILL.md frontmatter (`name`, `description`) per the open agent-skills spec. Codex and other SKILL.md-aware harnesses can load it directly. Any agent that can shell out to `mcporter` can drive `a2glimpse` — the surface is `mcporter call a2glimpse.<tool>`, not Claude-specific.

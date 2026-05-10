@@ -1,12 +1,12 @@
 # a2glimpse Handoff — Forward Inventory
 
-**Last updated:** 2026-05-09 (post `v0.8.8-multi-surface`)
+**Last updated:** 2026-05-10 (post merge of `design-track` charcoal-workshop + kitchen-sink into `session/feature-track` C2 multi-surface — pre-bless against the merged host hash)
 
 If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is the durable, cross-session "what's next" list — the canonical source of truth for outstanding work. It supersedes any session-scoped todo lists.
 
 ## Where We Are
 
-| Tag | Milestone |
+| Tag / Branch | Milestone |
 |---|---|
 | `v0.8.0` | POC complete (initial spike) |
 | `v0.8.1-phase3` | Polish + hardening Phase 1-4 |
@@ -14,16 +14,41 @@ If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowl
 | `v0.8.3-cluster-handoff` | A1 catalog + B1 filings + B2 runbook + C1 unsigned `.app` (parallel slice fan-out) |
 | `v0.8.4-mcp-bridge` | A2: `a2glimpse-mcp` MCP bridge over mcporter daemon |
 | `v0.8.5-menubar-pet` | Menubar pet mode (Petdex-format compat, Finder-launch is fun, not a stub) |
-| `v0.8.7-canvas-control` | Agent resize tool, slim titlebar fix, CheckBox filing #4 |
-| `v0.8.8-multi-surface` | C2: vertical stack, per-surface await queues, auto-grow window, `self_check`, `__a2glimpse_debug` |
+| `v0.8.6-agent-skill` | A3 agent skill, HUMANS/LLMS rebrand, MCP resize tool, slim titlebar, B1 fourth filing |
+| `v0.8.7-canvas-control` | Agent resize tool ergonomics + slim titlebar fix + CheckBox filing #4 |
+| `v0.8.7-mad-scientist-garage` | Garage theme + shadow-DOM scoping fix + minority-report mode + iconography cheatsheet + visual goldens re-blessed at hash `7be8486d67c6` |
+| `v0.8.8-charcoal-workshop` (design-track) | Charcoal Workshop arc — always-dark canvas + mono typography + looser breathing + forward-compat usageHint variants + input love. Four discrete commits. **PRE-BLESS at branch tip; cumulative bless folded into v0.8.9 merge.** |
+| `v0.8.9-multi-surface-merge` (this merge, **PRE-BLESS**) | C2 multi-surface (vertical stack, per-surface action queues, auto-grow, `self_check`, `__a2glimpse_debug`) + design-track charcoal-workshop theme + kitchen-sink composite fixture + per-fixture geometry override in harness. Awaits cumulative re-bless against the merged host hash. |
 
-The appliance ships. Multiple surfaces stack and the window auto-grows. Per-surface action queues let one surface block while others tick. Trust boundary holds. Visual goldens are pinned by host hash; design-track will rotate the hash when its work lands and re-bless once at merge.
+The appliance ships. Multiple surfaces stack vertically; the window auto-grows. Per-surface action queues let `await_action` block on one surface while another ticks. Charcoal-workshop theme paints all of it. The kitchen-sink composite fixture is additive (the existing 9 isolated fixtures still earn their keep, per the visual-fixture-consolidation decision doc). Trust boundary holds across all branches.
 
 ## Outstanding Work — durable cross-session todo list
 
 Each item below is **actionable in a future session**. Status reflects what's true on `origin/main` as of this update. Update this file when you complete an item; treat it as the authoritative project todo list.
 
 ---
+
+### [x] DT-2 — Charcoal Workshop merge + cumulative re-bless — shipped 2026-05-10
+
+**Path:** Merged into `session/feature-track` alongside C2 multi-surface; merge commit captures both arcs. Cumulative re-bless against the merged host hash follows in a separate commit.
+
+The four-commit theme arc (`v0.8.8-charcoal-workshop`) plus the kitchen-sink composite fixture and per-fixture geometry override in the harness were merged into `session/feature-track` as part of the v0.8.9 multi-surface-merge arc. Merge was a no-fast-forward to preserve both branches' history visibly. Trust boundary verified: no IIFE edits, no new public stdin commands, no html/file/eval surface introduced. Conflict resolution touched HANDOFF.md (unified milestone table) only — auto-merge succeeded for `src/a2glimpse-host.html`, `src/a2glimpse.swift`, and `skills/a2glimpse/SKILL.md`.
+
+Single cumulative re-bless followed the merge — see `knowledge/log/<ts>.merge-c2-charcoal.devlog.md` for the playthrough and the parallel-branch-host-hash knowledge note for the protocol confidence upgrade.
+
+---
+
+### [x] DT — Design-track merge + re-bless — shipped 2026-05-10 (`v0.8.7-mad-scientist-garage`)
+
+design-track FF-merged + iconography cherry-picked + goldens re-blessed by sub-agent at hash `7be8486d67c6` (9/9 fixtures at 0.0000% diff). Branch + agent worktree cleaned up. Tag created.
+
+**Optional follow-ups** (defer-friendly; were noted during the design-track session, not blocking):
+
+- **Pre-block content rendering bug** — fenced ` ``` ` blocks inside Cards sometimes render an empty gray rectangle instead of the diff text. Reproduced once, not always. Likely an interaction between the markdown engine's parsing of literal `\n` in JSON-emitted `literalString` and the renderer's Card-wrapping. Investigation queued.
+- **Dark-mode body bg verification** — diagnostic showed `body_bg: rgb(15, 17, 21)` (correct dark token), but screenshots intermittently rendered with a lighter body. Either screencapture quirk or a Swift KVO race. Worth a small repro session.
+- **Hazard-amber callouts** — the inline-code chip treatment looks great. Could extend the same channel via `additionalStyles` for a generic "callout" component or `usageHint="warn"`/`"danger"` variants. Designerly improvement, not blocking.
+- **Audit older Tabs/Modal wrapperPatches** against the corrected lever vocabulary in `knowledge/20260509-220000.investigation-methodology-and-lever-vocabulary.knowledge.md`. They predate this knowledge — verify their light-DOM CSS expectations weren't silently broken by the same shadow-scoping issue.
+- **Visual-fixture consolidation** — 9 fixtures × renderer-hash dirs accumulates re-bless work fast. Proposed 9 → 3 shape (kitchen-sink + modal + upstream-bugs) deferred until at least one more cumulative re-bless gives n=2 cost data. Full decision space, trade-offs, trigger conditions, and "what future-me might wish past-me had done" captured at `knowledge/20260510-035000.visual-fixture-consolidation-decision.knowledge.md`. Likely re-revisited after the next design-track styling pass on the canvas.
 
 ### [x] A3 — Agent Skill — shipped 2026-05-09
 

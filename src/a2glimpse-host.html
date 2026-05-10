@@ -60,65 +60,135 @@
     background: Canvas;
     color: CanvasText;
   }
+  /* Charcoal Workshop is committed-dark. Forcing color-scheme: dark on
+     :root makes the UA `Canvas` / `CanvasText` system colors (which the
+     renderer's a2glimpse-app shadow uses for :host bg/color) resolve to
+     dark variants. Without this, the renderer's shadow paints white over
+     body's charcoal. The signal also propagates into shadow-DOM via
+     inheritance, so the IIFE's `:host { color-scheme: var(--color-scheme); }`
+     rule resolves correctly too. */
+  :root { color-scheme: dark; }
   html { height: 100%; }
   body { min-height: 100%; box-sizing: border-box; }
   body {
     /* Scrollbar suppressed at body level — surface chrome is fixed-size in
-       this appliance; renderer components manage their own internal overflow
-       (Card, Column inner sections use overflow: auto within their shadow
-       trees). Letting body scroll on micro-overflow added a permanent
-       trailing scrollbar that wasn't load-bearing. */
+       this appliance; renderer components manage their own internal overflow.
+       See earlier comment for rationale. */
     overflow: hidden;
-    padding: 20px 24px;
+    padding: 28px 32px;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-    font-size: 14px;
-    line-height: 1.45;
-    background: #fbfcfd;
-    /* Material Design tokens consumed by the vendored renderer. CSS custom
-       properties pierce shadow-DOM boundaries via var() reference, so defining
-       them on body makes the renderer's vendored CSS (which references
-       --md-sys-color-* and --md-sys-elevation-*) resolve without touching the
-       IIFE. Without these, MultipleChoice/CheckBox/Card render transparent
-       and look invisible. */
-    --md-sys-color-primary: #2563eb;
-    --md-sys-color-on-primary: #ffffff;
-    --md-sys-color-on-surface: #1f2328;
-    --md-sys-color-outline: #d0d7de;
-    --md-sys-color-outline-variant: #e6eaee;
-    --md-sys-color-surface: #ffffff;
-    --md-sys-color-surface-container-low: #f6f8fa;
-    --md-sys-color-surface-container-high: #eaeef2;
-    --md-sys-color-surface-container-highest: #d8dde3;
-    --md-sys-color-secondary-container: #eef3ff;
-    --md-sys-color-on-secondary-container: #1d3a8a;
-    --md-sys-elevation-level1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
-    --md-sys-elevation-level2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
-    --default-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    /* Charcoal Workshop typeface — mono, IDE / oscilloscope feel. Stack falls
+       through Brian's installed Nerd Fonts (CommitMono, Hack) before generic
+       JetBrains/SF/system mono. Fonts not installed gracefully degrade. */
+    font-family: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "Hack", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    background: var(--a2g-paper);
+    color: var(--a2g-ink);
+    /* Material Design tokens consumed by the vendored renderer. Re-pointed at
+       the always-charcoal --a2g-* tokens below. CSS custom properties pierce
+       shadow-DOM boundaries via var() reference, so defining them on body
+       makes the renderer's vendored CSS resolve without touching the IIFE. */
+    --md-sys-color-primary: var(--a2g-voltage);
+    --md-sys-color-on-primary: #1a1100;
+    --md-sys-color-on-surface: var(--a2g-ink);
+    --md-sys-color-outline: var(--a2g-line);
+    --md-sys-color-outline-variant: var(--a2g-line-soft);
+    --md-sys-color-surface: var(--a2g-card);
+    --md-sys-color-surface-container-low: var(--a2g-paper-up);
+    --md-sys-color-surface-container-high: var(--a2g-card);
+    --md-sys-color-surface-container-highest: var(--a2g-card-up);
+    --md-sys-color-secondary-container: #3a2a05;
+    --md-sys-color-on-secondary-container: #ffd687;
+    --md-sys-elevation-level1: 2px 2px 0 0 var(--a2g-line);
+    --md-sys-elevation-level2: 3px 3px 0 0 var(--a2g-line);
+    --default-font-family: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
     --font-family: var(--default-font-family);
     --font-family-flex: var(--default-font-family);
+    font-feature-settings: "ss01", "ss02", "calt", "liga", "kern";
+
+    /* CHARCOAL WORKSHOP semantic tokens. Always-dark canvas regardless of
+       system appearance. The "garage" — black workbench, voltage-amber
+       accent, bone-white components and text. Cards step UP from body
+       (lighter), not down, so they read as elevated surfaces. The
+       previously-system-aware light/dark token swap is gone; this aesthetic
+       is committed to. (Decision rationale + alternatives considered are
+       documented in the commit body that introduced this.)
+
+       Inversion ladder:
+         paper       — body / canvas (deepest)
+         paper-up    — subtle elevation (rare; used for input fills)
+         card        — Card surface (one tone up from paper)
+         card-up     — emphasized surface, modal backdrop element
+         ink         — primary text on body
+         ink-2       — secondary/dim text
+         line        — strong borders (primary buttons, focused inputs)
+         line-soft   — subtle borders (resting cards, dividers)
+         voltage     — accent (focus rings, warning chips, active state)
+         voltage-2   — voltage hover/active variant
+         spark       — success / confirmation accent
+         danger      — error / destructive accent
+    */
+    --a2g-paper: #0c0d10;
+    --a2g-paper-up: #14161b;
+    --a2g-card: #1a1d22;
+    --a2g-card-up: #262a31;
+    --a2g-ink: #e6e8eb;
+    --a2g-ink-2: #b3b8c0;
+    --a2g-line: #e6e8eb;
+    --a2g-line-soft: #3a3f48;
+    --a2g-voltage: #ffb020;
+    --a2g-voltage-2: #f59e0b;
+    --a2g-spark: #22c55e;
+    --a2g-danger: #ef4444;
+    --a2g-mono: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+    /* Per-component vars. Resting state defaults; :hover/:focus-within rules
+       below override on the host element, propagating into the inline-styled
+       inner element via var() resolution. */
+    --a2g-btn-bg: var(--a2g-card);
+    --a2g-btn-fg: var(--a2g-ink);
+    --a2g-btn-border: var(--a2g-line-soft);
+    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line-soft);
+    --a2g-btn-translate: 0;
+    --a2g-tf-bg: var(--a2g-paper-up);
+    --a2g-tf-border: var(--a2g-line-soft);
+    --a2g-tf-shadow: none;
   }
 
-  /* Surface-level padding so root content doesn't hug the WKWebView chrome.
-     We pad the body container rather than a2ui-surface so we don't override
-     the renderer's :host display semantics (Lit shadow-DOM components define
-     their own display via :host; external selectors beat that and break
-     layout). */
+  /* Surface-level padding so root content doesn't hug the WKWebView chrome. */
   a2glimpse-app {
     display: block;
   }
 
-  /* Card outer margin — host element accepts margin without disturbing the
-     internal :host display rule. */
-  a2ui-card {
-    margin: 4px 0;
-  }
+  /* IMPORTANT — selector-targeted rules for renderer components (a2ui-button,
+     a2ui-card, a2ui-text, a2ui-textfield, etc.) live INSIDE this body's
+     <style> would NOT match those elements. They render inside
+     a2glimpse-app's shadow root (and nested deeper), and CSS rules can't
+     cross shadow-DOM boundaries via selector matching.
 
-  /* Light-DOM host-level layout for input components. The shadow-DOM chrome
-     is owned by the vendored renderer; we only touch the host element. */
-  a2ui-multiplechoice, a2ui-checkbox, a2ui-textfield, a2ui-slider { display: block; margin-bottom: 12px; }
-  a2ui-multiplechoice:last-child, a2ui-checkbox:last-child,
-  a2ui-textfield:last-child, a2ui-slider:last-child { margin-bottom: 0; }
+     Custom-property inheritance DOES cross — that's how the --a2g-* tokens
+     declared on `body` reach the rendered Lit-shadow components. That's the
+     load-bearing channel for theming.
+
+     Selector rules — `:hover`, `[data-primary]`, `<code>` styling, etc. —
+     are injected into the renderer shadow trees via the `a2glimpse-shadow-
+     style-injection` script block at the bottom of this document. See also
+     knowledge/<date>.shadow-dom-css-scoping-pathology.knowledge.md for the
+     full root-cause record.
+
+     Body-level selectors here apply ONLY to elements that genuinely live in
+     the document's light DOM: <body>, <a2glimpse-app> (host), and any host
+     elements whose hosts are direct light-DOM children of body. Since
+     <a2glimpse-app> creates its own shadow root and renders everything
+     through it, that shrinks "things addressable from here" to essentially
+     {body, a2glimpse-app}. */
+
+  /* Code/diff content — same shadow-scope caveat. The styles below
+     populate <code> and <pre> elements rendered by the markdown engine
+     INSIDE a2ui-text's own shadow root (separate scope from
+     a2glimpse-app's). They're injected per-instance via the Text-shadow
+     hook in the same script block. */
 
   /* Text usageHint typographic emphasis. The vendored renderer reflects
      `usageHint` to the `usage-hint` attribute (Lit @property reflect: true),
@@ -148,41 +218,47 @@
     padding-top: 28px;
   }
 
-  /* Dark-mode token pair. Activated when Swift pushes
-     `document.body.dataset.colorScheme = 'dark'` after detecting
-     NSApp.effectiveAppearance == .darkAqua (and on KVO updates as the user
-     toggles the system setting). When the attribute is absent, the light
-     tokens above apply — no Swift signal is required for basic operation.
-     Test-mode is pinned to light by Swift (does not subscribe to system
-     appearance changes), keeping visual goldens deterministic.
+  /* Charcoal Workshop is always-on — no light/dark token swap. The body
+     block above declares charcoal tokens regardless of system appearance.
+     Swift still pushes `body.dataset.colorScheme` for backward compat
+     with code that reads it, but no rules respond to it here.
 
-     Tokens were chosen deliberately rather than inverted:
-       - surface: #1c1f24 (Material 3 dark neutral, slightly warm)
-       - surface-container-*: stepped neutrals so Card/Modal still read
-         as elevated against the body background (#0f1115)
-       - primary: #7aa2ff (lightened brand blue for AA contrast on dark
-         surface)
-       - outlines: low-chroma greys that are visible but not loud
-       - elevation: black-toned shadows; dark mode elevations work via
-         tone shift more than shadow, but a faint shadow still helps
-     Phase 4b. */
-  body[data-color-scheme="dark"] {
-    background: #0f1115;
-    color: #e6e8eb;
-    --md-sys-color-primary: #7aa2ff;
-    --md-sys-color-on-primary: #0a1733;
-    --md-sys-color-on-surface: #e6e8eb;
-    --md-sys-color-outline: #4a5160;
-    --md-sys-color-outline-variant: #2a2f38;
-    --md-sys-color-surface: #1c1f24;
-    --md-sys-color-surface-container-low: #1a1d22;
-    --md-sys-color-surface-container-high: #262a31;
-    --md-sys-color-surface-container-highest: #30353d;
-    --md-sys-color-secondary-container: #213056;
-    --md-sys-color-on-secondary-container: #c9d6ff;
-    --md-sys-elevation-level1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 1px rgba(0, 0, 0, 0.30);
-    --md-sys-elevation-level2: 0 4px 12px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.40);
-  }
+     Rationale (rewindable from this commit's body): the previous mode-aware
+     token logic created a corner-seam issue against macOS dark window
+     chrome and forced the brutalist aesthetic to read differently per mode.
+     Always-charcoal commits to one direction; the alternatives considered
+     and the reasoning are captured in the commit body that introduced
+     this. Future-Brian can pivot back to mode-aware by reading those notes
+     and the design-track timeline. */
+</style>
+<style id="a2glimpse-transparent-mode">
+/* Minority Report mode — activated when Swift launches with --transparent
+   (typically paired with --frameless). NSWindow + WKWebView are already
+   transparent at the AppKit/WebKit layer; this CSS strips the canvas so
+   what remains is just the rendered components floating on the desktop.
+
+   Component cards, buttons, modals etc. retain their own backgrounds
+   (set via additionalStyles in the IIFE), so they're visible as solid
+   surfaces against whatever's behind. The brutalist 2px-offset shadows
+   give the floating cards an honest cast-shadow against any backdrop.
+
+   Trade-off: text outside a Card sits directly on the desktop and may
+   read poorly against busy wallpapers. Best practice for transparent
+   mode is to wrap content in Cards. */
+html[data-transparent], html[data-transparent] body[data-transparent] {
+  background: transparent !important;
+}
+body[data-transparent] {
+  /* Strip the unified-titlebar top padding — there's no titlebar in
+     frameless mode, so content flows from the top of the window. */
+  padding-top: 0 !important;
+  /* Side padding stays — gives components breathing room from the
+     window edges. Drop further if you want true edge-to-edge. */
+}
+/* Inputs (TextField, MultipleChoice etc.) without a parent Card need
+   their own backgrounds in transparent mode — they're styled via
+   additionalStyles inline, which already uses var(--md-sys-color-surface)
+   from body's tokens, so they render solid. No-op here, just a note. */
 </style>
 <style id="a2glimpse-test-mode">
 /* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
@@ -10851,11 +10927,121 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
     elements: { a: empty(), audio: empty(), body: empty(), button: empty(), h1: empty(), h2: empty(), h3: empty(), h4: empty(), h5: empty(), iframe: empty(), input: empty(), p: empty(), pre: empty(), textarea: empty(), video: empty() },
     markdown: { p: [], h1: [], h2: [], h3: [], h4: [], h5: [], ul: [], ol: [], li: [], a: [], strong: [], em: [] },
     additionalStyles: {
-      Button: { appearance: "none", border: "0", borderRadius: "8px", padding: "10px 14px", background: "#0a84ff", color: "white", font: "inherit", cursor: "pointer" },
-      Card: { border: "1px solid #d0d7de", borderRadius: "8px", padding: "16px", background: "Canvas" },
-      Text: { body: { margin: "0" }, h1: { margin: "0", fontSize: "24px" }, h2: { margin: "0", fontSize: "20px" }, h3: { margin: "0", fontSize: "18px" }, h4: { margin: "0" }, h5: { margin: "0" }, caption: { margin: "0", opacity: "0.75" } },
-      TextField: { appearance: "none", boxSizing: "border-box", width: "100%", border: "1px solid #d0d7de", borderRadius: "6px", padding: "8px 10px", background: "Canvas", color: "CanvasText", font: "inherit", lineHeight: "1.4" },
-      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "#0a84ff", cursor: "pointer" },
+      // Button — chunky, bordered, hard-shadow stamp. Resting/hover/active
+      // states all flow through CSS custom properties that the light-DOM
+      // host CSS flips on :hover/:active/:focus-within. transform + shadow
+      // give the tactile press feel; transition is 80ms for snap.
+      Button: {
+        appearance: "none",
+        boxSizing: "border-box",
+        border: "2px solid var(--a2g-btn-border)",
+        borderRadius: "6px",
+        padding: "12px 22px",
+        background: "var(--a2g-btn-bg)",
+        color: "var(--a2g-btn-fg)",
+        font: "inherit",
+        fontWeight: "600",
+        fontSize: "13px",
+        letterSpacing: "0.02em",
+        textTransform: "uppercase",
+        cursor: "pointer",
+        boxShadow: "var(--a2g-btn-shadow)",
+        transform: "translate(var(--a2g-btn-translate), var(--a2g-btn-translate))",
+        transition: "transform 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out",
+        outline: "none"
+      },
+      // Row — flex container with explicit gap. Looser breathing: 14px gap
+      // (was 10px) keeps actionable controls visually distinct on the
+      // wider canvas the styling pass is establishing.
+      Row: { display: "flex", gap: "14px", alignItems: "center" },
+      // Card — brutalist stamp, looser inner padding (was 16px) so content
+      // breathes against the border and the dark canvas isn't crowded.
+      Card: {
+        border: "1.5px solid var(--a2g-line-soft)",
+        borderRadius: "8px",
+        padding: "20px",
+        background: "var(--md-sys-color-surface, Canvas)",
+        boxShadow: "2px 2px 0 0 var(--a2g-line-soft)"
+      },
+      // Text usageHint variants. The renderer indexes additionalStyles.Text
+      // by `usageHint` value, so any string can be added here as a new
+      // variant key. Standard keys (body, h1-h5, caption) cover typography;
+      // the four callout keys (warn, danger, info, success) below extend
+      // Text into a brutalist alert/chip channel — left-border accent
+      // strip + tinted bg + uppercase eyebrow label feel. Workshop signage
+      // discipline: high-contrast, single-line preferred, agent-driveable.
+      // Document this convention in skills/a2glimpse/SKILL.md so agents
+      // know to reach for it.
+      Text: {
+        body: { margin: "0", lineHeight: "1.6" },
+        h1: { margin: "0 0 4px", fontSize: "26px", fontWeight: "700", letterSpacing: "-0.01em", lineHeight: "1.2" },
+        h2: { margin: "0 0 4px", fontSize: "21px", fontWeight: "700", letterSpacing: "-0.005em", lineHeight: "1.25" },
+        h3: { margin: "0 0 2px", fontSize: "17px", fontWeight: "700", lineHeight: "1.3" },
+        h4: { margin: "0 0 2px", fontSize: "14px", fontWeight: "700", letterSpacing: "0.04em", textTransform: "uppercase" },
+        h5: { margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" },
+        caption: { margin: "0", opacity: "0.66", fontSize: "12px", letterSpacing: "0.02em" },
+        // Callout variants. Each is a block element with a left-border
+        // accent strip in its semantic color, tinted bg, and the rest
+        // of the workshop signage discipline (mono inherited, slight
+        // letter-spacing, padded). Agents pick by intent, not visual.
+        warn: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(255, 176, 32, 0.08)",
+          color: "var(--a2g-voltage)",
+          borderLeft: "4px solid var(--a2g-voltage)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        },
+        danger: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(239, 68, 68, 0.10)",
+          color: "var(--a2g-danger)",
+          borderLeft: "4px solid var(--a2g-danger)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5",
+          fontWeight: "600"
+        },
+        info: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(230, 232, 235, 0.06)",
+          color: "var(--a2g-ink)",
+          borderLeft: "4px solid var(--a2g-line-soft)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        },
+        success: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(34, 197, 94, 0.10)",
+          color: "var(--a2g-spark)",
+          borderLeft: "4px solid var(--a2g-spark)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        }
+      },
+      TextField: {
+        appearance: "none",
+        boxSizing: "border-box",
+        width: "100%",
+        border: "1.5px solid var(--a2g-tf-border)",
+        borderRadius: "6px",
+        padding: "11px 14px",
+        background: "var(--a2g-tf-bg)",
+        color: "var(--md-sys-color-on-surface, CanvasText)",
+        font: "inherit",
+        lineHeight: "1.5",
+        boxShadow: "var(--a2g-tf-shadow)",
+        transition: "border-color 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out",
+        outline: "none"
+      },
+      Slider: { appearance: "auto", width: "100%", margin: "10px 0", accentColor: "var(--a2g-voltage)", cursor: "pointer", height: "20px" },
       // Modal: styles the inner <section class="...Modal.element"> wrapper inside
       // the <dialog>. Gives the modal panel card-like chrome. We cannot reach
       // the <dialog> itself from outside the renderer's shadow DOM — its
@@ -11177,6 +11363,207 @@ lit-html/directives/style-map.js:
     }
   });
 })();
+</script>
+<script id="a2glimpse-shadow-style-injection">
+// Selector-targeted CSS for renderer components must live INSIDE the
+// shadow tree where those elements actually render. Body's <style>
+// can't reach them — only custom-property inheritance crosses the
+// shadow boundary. See:
+//   knowledge/<date>.shadow-dom-css-scoping-pathology.knowledge.md
+//
+// Two scopes:
+//   1. each a2ui-surface.shadowRoot — holds the entire surface tree
+//      (a2ui-root > column > row > button). Inject per-instance via
+//      firstUpdated hook. NOTE: the buttons live two shadow roots deep
+//      from <body> (a2glimpse-app shadow > a2ui-surface > a2ui-surface
+//      shadow > a2ui-root > ...). Targeting a2glimpse-app's shadow
+//      doesn't reach them; a2ui-surface's shadow is the right scope.
+//   2. each a2ui-text.shadowRoot — holds markdown-emitted <code>/<pre>.
+//      Inject per-instance via firstUpdated hook.
+//
+// Both injections read from CSS custom properties declared on body,
+// which DO cross shadow boundaries via inheritance. So all the
+// --a2g-* tokens just work in here.
+
+const A2G_APP_SHADOW_CSS = `
+  /* Card outer margin */
+  a2ui-card { margin: 4px 0; }
+
+  /* Light-DOM host-level layout for input components */
+  a2ui-multiplechoice, a2ui-checkbox, a2ui-textfield, a2ui-slider {
+    display: block;
+    margin-bottom: 12px;
+  }
+  a2ui-multiplechoice:last-child, a2ui-checkbox:last-child,
+  a2ui-textfield:last-child, a2ui-slider:last-child { margin-bottom: 0; }
+
+  /* Mad-scientist garage — Button states.
+     Primary buttons get reflected data-primary via the wrapperPatch below.
+     States flip CSS custom properties; the inline style on the inner
+     <button> from additionalStyles picks them up via var() resolution. */
+  a2ui-button {
+    display: inline-block;
+    transition: filter 80ms ease-out;
+  }
+  a2ui-button[data-primary] {
+    --a2g-btn-bg: var(--a2g-ink);
+    --a2g-btn-fg: var(--a2g-paper);
+    --a2g-btn-border: var(--a2g-line);
+    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line);
+  }
+  a2ui-button:hover {
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line-soft);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button[data-primary]:hover {
+    --a2g-btn-bg: var(--a2g-ink-2);
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button:active {
+    --a2g-btn-shadow: 0 0 0 0 transparent;
+    --a2g-btn-translate: 2px;
+  }
+  a2ui-button:focus-within {
+    outline: 3px solid var(--a2g-voltage);
+    outline-offset: 2px;
+    border-radius: 7px;
+  }
+
+  /* TextField states. Border lifts to ink-2 on hover (subtle), to ink
+     plus voltage outline on focus-within. Same custom-prop channel as
+     buttons; the inline style on the inner <input> reads the host vars. */
+  a2ui-textfield:hover {
+    --a2g-tf-border: var(--a2g-ink-2);
+  }
+  a2ui-textfield:focus-within {
+    --a2g-tf-border: var(--a2g-ink);
+    --a2g-tf-shadow: 0 0 0 3px var(--a2g-voltage);
+  }
+
+  /* Input-component label typography. The renderer renders <label> in the
+     shadow tree of TextField/MultipleChoice/CheckBox. Font inheritance
+     carries the mono stack down through shadow boundaries via inheritance.
+     A small letter-spacing + slight uppercase mood gives input labels the
+     workshop-signage feel without re-styling every component. */
+  a2ui-textfield, a2ui-multiplechoice, a2ui-checkbox, a2ui-slider {
+    font-feature-settings: "ss01", "calt", "kern";
+    letter-spacing: 0.01em;
+  }
+
+  /* MultipleChoice + CheckBox accent on host. The renderer doesn't consume
+     additionalStyles for these (one of the upstream gaps captured in B1
+     filings). What we CAN do from outside is provide a focus-within
+     visible-state via outline, since the user's keyboard interaction
+     surface is the host element. accent-color cascades into native
+     <input type="checkbox"|"radio"> through shadow boundaries via
+     inheritance — gives both the voltage tick treatment for free. */
+  a2ui-multiplechoice, a2ui-checkbox {
+    accent-color: var(--a2g-voltage);
+  }
+  a2ui-multiplechoice:focus-within, a2ui-checkbox:focus-within {
+    outline: 2px solid var(--a2g-voltage);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  /* Slider — mono-friendly height + voltage accent already from
+     additionalStyles.Slider. Add hover lift via filter and focus-visible
+     halo via outline. The native track + thumb are styled by accent-color
+     plus UA defaults; the wrapper additions are about affordance, not
+     repainting the native control (which would require shadow CSS that
+     can't reach into the input). */
+  a2ui-slider:hover { filter: brightness(1.15); }
+  a2ui-slider:focus-within {
+    outline: 2px solid var(--a2g-voltage);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+`;
+
+const A2G_TEXT_SHADOW_CSS = `
+  /* Code/diff content from the markdown engine renders into a2ui-text's
+     shadow root. Style as terminal output: monospace, tinted, sharp. */
+  code, pre {
+    font-family: var(--a2g-mono);
+    font-size: 0.92em;
+  }
+  code {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--a2g-line-soft);
+  }
+  pre {
+    background: var(--a2g-ink);
+    color: #e6e8eb;
+    padding: 12px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--a2g-line);
+    box-shadow: 2px 2px 0 0 var(--a2g-line);
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+`;
+
+// Inject into each a2ui-surface instance's shadow root on first render.
+// The surface tree (a2ui-root > column > row > button) lives INSIDE
+// a2ui-surface's shadow, two shadow roots deep from body. This is the
+// load-bearing scope for selector-targeted theming.
+customElements.whenDefined('a2ui-surface').then((SurfaceCtor) => {
+  const orig = SurfaceCtor.prototype.firstUpdated;
+  SurfaceCtor.prototype.firstUpdated = function (changed) {
+    if (orig) orig.call(this, changed);
+    if (this.shadowRoot && !this.shadowRoot.querySelector('style[data-a2g-surface-shadow]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-a2g-surface-shadow', '');
+      style.textContent = A2G_APP_SHADOW_CSS;
+      this.shadowRoot.appendChild(style);
+    }
+  };
+});
+
+// Inject into each a2ui-text instance's shadow root on first render.
+customElements.whenDefined('a2ui-text').then((TextCtor) => {
+  const orig = TextCtor.prototype.firstUpdated;
+  TextCtor.prototype.firstUpdated = function (changed) {
+    if (orig) orig.call(this, changed);
+    if (this.shadowRoot && !this.shadowRoot.querySelector('style[data-a2g-text-shadow]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-a2g-text-shadow', '');
+      style.textContent = A2G_TEXT_SHADOW_CSS;
+      this.shadowRoot.appendChild(style);
+    }
+  };
+});
+</script>
+<script>
+// Wrapper-side reflection of a2ui-button's `primary` property to a
+// `data-primary` attribute on the host. The renderer declares `primary`
+// via Lit's @property() WITHOUT {reflect: true}, so light-DOM CSS can't
+// see it from the outside. We need that signal to differentiate primary
+// vs secondary button visuals — primary gets ink fill / white text /
+// hard ink shadow, secondary gets paper fill / ink text / soft shadow.
+//
+// Implementation: hook the update lifecycle, add or remove the attribute
+// based on the property's truthiness each render. Cheap, idempotent, and
+// the IIFE remains untouched. Same pattern as the Tabs/Modal patches below.
+customElements.whenDefined('a2ui-button').then((ButtonCtor) => {
+  const orig = ButtonCtor.prototype.update;
+  ButtonCtor.prototype.update = function (changedProps) {
+    if (this.primary) this.setAttribute('data-primary', '');
+    else this.removeAttribute('data-primary');
+    return orig.call(this, changedProps);
+  };
+});
 </script>
 <script>
 // Wrapper-side fix for a renderer defaultTheme gap: theme.components.Tabs is

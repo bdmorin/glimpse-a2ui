@@ -46,6 +46,7 @@ const FIXTURES = [
   'text-field-form',
   'tabs',
   'icon',
+  'kitchen-sink',
 ];
 
 // Render-settle delay. Empirically generous; the renderer is local and fast.
@@ -57,16 +58,21 @@ const READY_TIMEOUT_MS = 10_000;
 // AA jitter from window-server compositing.
 const THRESHOLD_PERCENT = 0.1;
 
-// Test-mode locked capture geometry. Swift's --test-mode locks the *content*
-// area to 480x320, but snap-happy captures the whole window (including the
-// titlebar). We crop the titlebar before comparing — the title bar contains
-// traffic-light buttons whose hover/focus jitter is non-deterministic and not
-// what we're testing. Update both numbers if you change the test-mode default
-// size in a2glimpse.swift.
-const EXPECTED_WIDTH = 480;
-const EXPECTED_HEIGHT = 352; // full captured (incl. 32px titlebar)
+// Test-mode default capture geometry. Swift's --test-mode honors --width/
+// --height when explicit; otherwise content area = 480x320. snap-happy
+// captures the whole window (including titlebar); we crop the titlebar
+// before comparing — the title bar contains traffic-light buttons whose
+// hover/focus jitter is non-deterministic and not what we're testing.
+//
+// PER-FIXTURE OVERRIDE: drop a `<fixture>.meta.json` next to the fixture's
+// .jsonl file with `{"width": <w>, "height": <h>}` to spawn at custom
+// content geometry. The kitchen-sink composite fixture uses this to fit
+// every theme-relevant component in one canvas. Without a meta file,
+// fixtures fall back to the 480x320 defaults below — no change to the
+// existing 9 fixtures.
+const DEFAULT_CONTENT_WIDTH = 480;
+const DEFAULT_CONTENT_HEIGHT = 320;
 const TITLEBAR_HEIGHT = 32;
-const CONTENT_HEIGHT = EXPECTED_HEIGHT - TITLEBAR_HEIGHT;
 
 // External tool: ImageMagick `compare` (no npm deps).
 const COMPARE_BIN = '/opt/homebrew/bin/compare';
@@ -172,11 +178,12 @@ function runCmd(bin, args, opts = {}) {
 // Crop the titlebar off a captured PNG, in place. The titlebar contains
 // traffic-light buttons whose hover/focus state jitters across runs (~262 px
 // of noise that swamps the 0.1% threshold). Renderer content is what we test.
-async function cropTitlebar(pngPath) {
+// Geometry passed in to support per-fixture content-area override.
+async function cropTitlebar(pngPath, contentWidth, contentHeight) {
   const r = await runCmd('/opt/homebrew/bin/magick', [
     pngPath,
     '-crop',
-    `${EXPECTED_WIDTH}x${CONTENT_HEIGHT}+0+${TITLEBAR_HEIGHT}`,
+    `${contentWidth}x${contentHeight}+0+${TITLEBAR_HEIGHT}`,
     '+repage',
     pngPath,
   ]);
@@ -251,9 +258,49 @@ function loadFixtureLines(name) {
     .filter(Boolean);
 }
 
+// Per-fixture geometry override. If `<name>.meta.json` exists with a
+// {width, height} pair, use those for spawn + capture validation + crop.
+// Returns the resolved geometry shape: contentWidth/contentHeight (Swift's
+// --width/--height land here, content area only) and capturedHeight (what
+// snap-happy will return, content + 32px titlebar). 1x and 2x (Retina)
+// are both accepted at validation time.
+function fixtureGeometry(name) {
+  const metaPath = join(FIXTURE_DIR, `${name}.meta.json`);
+  if (existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+      const w = Number(meta.width);
+      const h = Number(meta.height);
+      if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+        return {
+          contentWidth: w,
+          contentHeight: h,
+          capturedHeight: h + TITLEBAR_HEIGHT,
+        };
+      }
+      console.error(`  ! ${name}: meta.json present but invalid (${JSON.stringify(meta)}); using defaults`);
+    } catch (e) {
+      console.error(`  ! ${name}: meta.json parse failed (${e.message}); using defaults`);
+    }
+  }
+  return {
+    contentWidth: DEFAULT_CONTENT_WIDTH,
+    contentHeight: DEFAULT_CONTENT_HEIGHT,
+    capturedHeight: DEFAULT_CONTENT_HEIGHT + TITLEBAR_HEIGHT,
+  };
+}
+
 async function captureFixture(name, mode) {
   const title = `a2glimpse-vr-${name}`;
-  const proc = spawn(BINARY, ['--test-mode', '--title', title], {
+  const geom = fixtureGeometry(name);
+  const spawnArgs = ['--test-mode', '--title', title];
+  // Only add explicit --width/--height when the fixture has a meta.json
+  // override. The 9 baseline fixtures land on the 480x320 default this way
+  // without changing their existing snapshots.
+  if (geom.contentWidth !== DEFAULT_CONTENT_WIDTH || geom.contentHeight !== DEFAULT_CONTENT_HEIGHT) {
+    spawnArgs.push('--width', String(geom.contentWidth), '--height', String(geom.contentHeight));
+  }
+  const proc = spawn(BINARY, spawnArgs, {
     stdio: ['pipe', 'pipe', 'inherit'],
     env: { ...process.env, A2GLIMPSE_TEST_MODE: '1' },
   });
@@ -310,18 +357,18 @@ async function captureFixture(name, mode) {
       capturedPath = await captureWindow(windowId, tmpDir);
       const dim = await pngDimensions(capturedPath);
       // Window may render at 1x or 2x (Retina); accept either as long as it's
-      // a multiple of expected.
-      const wOk = dim.width === EXPECTED_WIDTH || dim.width === EXPECTED_WIDTH * 2;
-      const hOk = dim.height === EXPECTED_HEIGHT || dim.height === EXPECTED_HEIGHT * 2;
+      // a multiple of expected. Per-fixture geometry comes from geom.
+      const wOk = dim.width === geom.contentWidth || dim.width === geom.contentWidth * 2;
+      const hOk = dim.height === geom.capturedHeight || dim.height === geom.capturedHeight * 2;
       if (wOk && hOk) break;
       if (attempt >= 1) {
         throw new Error(
           `Captured window size ${dim.width}x${dim.height} does not match expected ` +
-          `${EXPECTED_WIDTH}x${EXPECTED_HEIGHT} (or 2x) after retry`
+          `${geom.contentWidth}x${geom.capturedHeight} (or 2x) after retry`
         );
       }
       console.error(
-        `  ! ${name}: captured ${dim.width}x${dim.height}, expected ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT}; retrying once`
+        `  ! ${name}: captured ${dim.width}x${dim.height}, expected ${geom.contentWidth}x${geom.capturedHeight}; retrying once`
       );
       attempt += 1;
       await sleep(500);
@@ -329,7 +376,7 @@ async function captureFixture(name, mode) {
 
     // Crop the captured PNG to content area (drop titlebar) so the goldens
     // and comparisons exclude window-chrome jitter.
-    await cropTitlebar(capturedPath);
+    await cropTitlebar(capturedPath, geom.contentWidth, geom.contentHeight);
 
     const goldenPath = join(snapshotDir(), `${name}.png`);
 
