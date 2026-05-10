@@ -1,0 +1,6 @@
+{
+  "width": 720,
+  "height": 900,
+  "purpose": "Theme-regression composite — every theme-relevant component on one canvas. Per visual-fixture-consolidation decision (knowledge/20260510-035000): additive 10th fixture, not yet replacing the 9 isolated fixtures. Provides measurement data for whether a single composite catches the same theme regressions the per-component fixtures do.",
+  "scope": "Buttons (primary+secondary), Card, Text (h2/body/caption/code chips), fenced pre block, TextField, Slider, Row layout. EXCLUDED: Modal (separate shadow scope), MultipleChoice + CheckBox (upstream-bug rendering would contaminate diff signal), Tabs + Icon (have their own isolated fixtures still earning their keep)."
+}
