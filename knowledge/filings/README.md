@@ -1,10 +1,10 @@
 # Upstream Filings — google/A2UI
 
-Filing-ready GitHub issue bodies for the A2UI vendored renderer bugs surfaced during the a2glimpse Phase 3 polish arc. Each file contains YAML frontmatter (target URL, proposed issue title, lineage) plus the issue body itself starting at the H1. Brian copies from the H1 onward into the "New Issue" form at the URL in `issue_url_target`.
+Filing-ready GitHub issue bodies for the A2UI vendored renderer bugs surfaced during the a2glimpse Phase 3 polish arc and follow-on screenshot session. Each file contains YAML frontmatter (target URL, proposed issue title, lineage) plus the issue body itself starting at the H1. Brian copies from the H1 onward into the "New Issue" form at the URL in `issue_url_target`.
 
 Recon-derived house style applied — terse, repo-relative paths, paste-ready repro JSONL, no preamble, no emoji, no labels (let triage apply them).
 
-## The three filings (file in this order, cross-reference each other)
+## The four filings (file in this order, cross-reference each other)
 
 1. **[Tabs theme-gap](20260509-172158.tabs-theme-gap.filing.md)**
    - Title: `[@a2ui/lit] Tabs.render: blank component when defaultTheme.components.Tabs.element is missing`
@@ -18,9 +18,13 @@ Recon-derived house style applied — terse, repo-relative paths, paste-ready re
    - Title: `[@a2ui/lit] MultipleChoice.getCurrentSelections throws when selections.literalArray is []`
    - Renderer crash on spec-valid input; cross-reference closed #574 for historical context.
 
+4. **[CheckBox stretched input](20260509-192800.checkbox-stretched-input.filing.md)**
+   - Title: `[lit@0.8] CheckBox: input { width: 100% } stretches native checkbox into a full-width bar`
+   - Visual bug; renders as full-row gray bars instead of labeled checkboxes. Found during the canvas-driven screenshot session 2026-05-09. One-line CSS fix.
+
 ## Cross-referencing order
 
-File (1) first — it's the cleanest standalone filing and establishes the audit context. Then (2) and (3) as a paired set under the MultipleChoice umbrella; their "Related issues" sections already point at each other and at (1). After filing, update each `Related issues` block in the filings if Brian gets real issue numbers back so the chain is bidirectional.
+File (1) first — it's the cleanest standalone filing and establishes the audit context. Then (2) and (3) as a paired set under the MultipleChoice umbrella; their "Related issues" sections already point at each other and at (1). File (4) last — it's standalone, also references (1) as the canonical example of the same family ("shadow CSS rule fires before theme is fully populated"). After filing, update each `Related issues` block in the filings if Brian gets real issue numbers back so the chain is bidirectional.
 
 ## What to do before pasting
 

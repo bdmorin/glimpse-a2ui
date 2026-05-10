@@ -40,19 +40,20 @@ Devlog: `knowledge/log/20260509-182643.a3.devlog.md`. Personal best-practices sy
 
 ---
 
-### [ ] B1 — File three GitHub issues against `google/A2UI`
+### [ ] B1 — File four GitHub issues against `google/A2UI`
 
 **Status:** filing-ready bodies exist at `knowledge/filings/`. **Blocked on Google CLA approval** (Brian applied; in queue as of 2026-05-09).
 
-**What:** Paste-and-file the three filing bodies once the CLA clears. Order matters — file Tabs first because the others cross-reference it:
+**What:** Paste-and-file the four filing bodies once the CLA clears. Order matters — file Tabs first because the others cross-reference it:
 
 1. `knowledge/filings/20260509-172158.tabs-theme-gap.filing.md`
 2. `knowledge/filings/20260509-172158.multiplechoice-type-variant.filing.md`
 3. `knowledge/filings/20260509-172158.multiplechoice-empty-selections.filing.md`
+4. `knowledge/filings/20260509-192800.checkbox-stretched-input.filing.md` *(added 2026-05-09 after the screenshot session — `input { width: 100% }` in CheckBox shadow CSS stretches the native checkbox into a full-row bar)*
 
 Each file's body from H1 down is paste-ready into https://github.com/google/A2UI/issues/new. Frontmatter has the proposed `issue_title`. After filing, update each filing's frontmatter with the assigned issue number for cross-referencing.
 
-**Effort:** ~15 minutes once CLA is cleared.
+**Effort:** ~20 minutes once CLA is cleared.
 
 **Pre-conditions:** CLA approval.
 
