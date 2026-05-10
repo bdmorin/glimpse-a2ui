@@ -10,6 +10,8 @@ Durable reference material for this fork. Read these before touching code in a n
 - [Worktree Isolation Verification](20260509-152436.worktree-isolation-verification.knowledge.md) — MANDATORY first-action check for worktree-dispatched agents; HARD_FAIL if not in an isolated worktree. Codifies the Phase 3 root-cause finding.
 - [Parallel Branches and the Visual-Golden Host Hash](20260510-020000.parallel-branch-host-hash.knowledge.md) — when two branches both edit `src/a2glimpse-host.html`, the visual-golden host hash rotates per side. Re-bless once at merge — never on each branch in isolation. Don't `rm -rf test/__snapshots__/*/` to clean up; you'll nuke the other branch's baseline.
 - [Vendored Renderer Pathologies](20260509-154525.vendored-renderer-pathologies.knowledge.md) — three levers (CSS custom properties, additionalStyles, prototype patching) for reaching shadow-DOM components without touching the IIFE. Documents two confirmed renderer bugs (Tabs theme-gap, MultipleChoice schema/element mismatch).
+- [Shadow-DOM CSS Scoping Pathology](20260509-214700.shadow-dom-css-scoping-pathology.knowledge.md) — why light-DOM `<style>` selectors silently fail against `a2ui-*` renderer components (two shadow roots deep) while custom-property inheritance still works. The fix pattern: inject `<style>` into the right shadow scope. Architectural truth that was missed during the early polish arc.
+- [Investigation Methodology and Lever Vocabulary](20260509-220000.investigation-methodology-and-lever-vocabulary.knowledge.md) — the operating philosophy + reusable techniques behind the styling work: three-round CSS cause-isolation, the wrapperPatch trust-boundary-clean mutation lever, and the corrected five-lever framing. Read this before investigating any renderer-related bug or theming issue.
 - [Renderer Re-vendor Runbook](20260509-172345.renderer-revendor-runbook.knowledge.md) — step-by-step procedure for adopting a new v0.8.x bugfix bundle from upstream `@a2ui/lit`. Pinning policy, trust-boundary diff check, workaround re-verification, visual re-bless protocol, rollback. **LIKELY (unproven) — first operator edits in place.**
 - [Renderer Bundle Pins](renderer-bundle-pins.md) — append-only ledger of every vendored bundle that has shipped. Pair with the runbook on every re-vendor.
 - [Agent Dispatch Procedure](20260509-160946.agent-dispatch-procedure.knowledge.md) — end-to-end runbook for orchestrator sessions dispatching worktree-isolated sub-agents. Synthesizes the three companion conventions into a single playbook covering pre-dispatch checks, prompt template, monitoring, merge protocol, recovery, and outcome vocabulary.
@@ -37,13 +39,14 @@ Durable reference material for this fork. Read these before touching code in a n
 
 ## Upstream Filings
 
-- [filings/README.md](filings/README.md) — filing-ready GitHub issue bodies for `google/A2UI` (Tabs theme-gap, MultipleChoice type/variant, MultipleChoice empty-literalArray). Slice B1 deliverable.
+- [filings/README.md](filings/README.md) — filing-ready GitHub issue bodies for `google/A2UI` (Tabs theme-gap, MultipleChoice type/variant, MultipleChoice empty-literalArray, CheckBox stretched-input). Slice B1 deliverable; CLA-blocked on Brian's side.
 
 ## Implementation Spike (2026-05-09)
 
 - [A2UI Spec Grounding](20260509-121003.a2ui-spec-grounding.knowledge.md) — local verification of A2UI v0.8 message names, renderer entry points, event shape, and eval-harness fit.
 - [a2glimpse POC Retrospective](20260509-130112.poc-retrospective.retrospective.md) — verdict, lessons learned, implemented subset, visual debugging notes, and next-step recommendations after the first visible spike.
 - [Phase 1 Visual-Regression Harness Retro](20260509-141700.phase1-visual-harness.retrospective.md) — SOFT_BLOCK finding: byte-equal comparison doesn't survive WKWebView noise; pixel-diff threshold is the load-bearing primitive that unblocks the visual harness.
+- [Visual Fixture Consolidation Decision](20260510-035000.visual-fixture-consolidation-decision.knowledge.md) — why 9, why maybe 3, why not 1. Decision space and trigger condition for collapsing the isolated fixtures into composites. The kitchen-sink composite shipped as the additive 10th fixture — the consolidation question is queued, not closed.
 
 ## Reading Order for a Fresh Session
 

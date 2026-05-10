@@ -914,3 +914,33 @@ B2 agent's first runbook write was blocked by a `PreToolUse` security hook regex
 `v0.8.3-cluster-handoff` (forthcoming) — closes the four-slice handoff cluster on `origin/main`.
 
 ---
+
+## 2026-05-10 13:30 — feature-track ←→ design-track merge to main
+
+**Agent:** Claude Opus 4.7, orchestrator (feature-track session)
+**Worktree:** `../glimpse-a2ui-feature-track` (sibling-dir, not `.claude/worktrees/`); branch `session/feature-track`
+**Lineage:** Closes feature-track session (C2 multi-surface). Merges design-track session's work in parallel. Per-slice fragments under `log/` for both arcs; aggregated forward into DEV_LOG.md as the merge entry.
+**Action:**
+- Committed feature-track C2 arc as single squashed commit (`b6541a4`).
+- Merged `design-track` (`--no-ff`) into `session/feature-track` at `850d227`. Resolved HANDOFF.md conflict (unified milestone table); auto-merge succeeded for `src/a2glimpse-host.html`, `src/a2glimpse.swift`, `skills/a2glimpse/SKILL.md`.
+- Re-blessed visual goldens at merged hash `a392c3eee7c5` (`60ab9a9`). Removed old `7be8486d67c6/`.
+- Surfaced slider + kitchen-sink non-determinism (native `<input type="range">` accent-color paint flicker). Extended harness with per-fixture `pixelDiffThreshold` via `meta.json` (`5341474`).
+- Upgraded `parallel-branch-host-hash.knowledge.md` UNCERTAIN→VERIFIED with actual playthrough (`04c8e02`).
+- Tagged `v0.8.9-multi-surface-charcoal-merge` (annotated, tag SHA `cd76f19` points at `04c8e02`).
+- Pushed `session/feature-track` to `origin/main` (FF; no force). Pushed tag.
+
+**Outcome:** OK
+**Artifacts:**
+- Code: `src/mcp/a2glimpse-mcp.ts`, `src/a2glimpse-host.html`, `src/a2glimpse.swift`, `test/mcp.mjs`, `test/visual.mjs`
+- Tests: 11/11 mcp, 7/7 smoke, 10/10 visual at hash `a392c3eee7c5`
+- Knowledge: `knowledge/log/20260510-020000.c2.{devlog,auditlog}.md`, `knowledge/20260510-020000.parallel-branch-host-hash.knowledge.md`
+- Meta: `test/fixtures/slider.meta.json` (new), `test/fixtures/kitchen-sink.meta.json` (threshold added)
+- Docs: SKILL.md, README.md, HANDOFF.md, DEV_LOG.md (sibling entry)
+- Tag: `v0.8.9-multi-surface-charcoal-merge` on `origin`
+
+**Notes:**
+- Two parallel sessions (feature-track and design-track) merged cleanly with one HANDOFF.md conflict only. Verifies the parallel-branch protocol end-to-end.
+- AUDIT_LOG.md gap from `v0.8.3-cluster-handoff` forward (~18 commits) is not backfilled here — append-only discipline. Per-slice fragments exist in `log/` for those arcs; an aggregation pass is optional future work.
+- Slider non-determinism is tolerated via threshold (3.0% per-fixture), not silenced. A stable real fix would be design-track stylist work to pin `accent-color` paint via explicit gradient + thumb pseudo-element CSS.
+
+---

@@ -125,6 +125,7 @@ Cosmetic; non-blocking. No order; pick by mood.
 - **Dark mode `additionalStyles` color review.** Phase 4b ships dark-mode CSS-token-driven theming, but `defaultTheme.additionalStyles` (Button blue background, Card outline color, etc.) are baked into the IIFE. Either route those colors through CSS variables (wrapper edit + `var(--name)` references in `additionalStyles` strings) or accept the slight light-bias.
 - **Visual harness production-mode goldens.** Today the harness runs in `--test-mode` only. A separate suite of production-mode fixtures could capture unified-titlebar + dark-mode rendering. Out of scope for now.
 - **Slider label rendering.** Phase 3 textfield-slider noted that the renderer's `<label>` doesn't appear above the slider track. Cosmetic. Documented in that slice's devlog.
+- **Slider accent-color paint determinism.** Surfaced during the `v0.8.9-multi-surface-charcoal-merge` re-bless: native `<input type="range">` accent-color repaints the colored track-fill section non-deterministically (~2% pixel variance) even after the harness's 1500ms settle. Currently tolerated via per-fixture `pixelDiffThreshold: 3.0` in `test/fixtures/slider.meta.json` (and `0.5` for kitchen-sink). A stable real fix would pin the fill via an explicit slider-track gradient + thumb pseudo-element CSS so the UA's flicker-prone fill region is no longer load-bearing. Likely a 30-min stylist task. Currently masked but not silenced — a real regression (theme/layout/geometry shift) would still trip the elevated threshold.
 
 ---
 

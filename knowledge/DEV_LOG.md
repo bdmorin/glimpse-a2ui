@@ -1424,3 +1424,33 @@ shadow components render.
 - Slice fragments: [`log/20260510-020000.c2.devlog.md`](log/20260510-020000.c2.devlog.md), [`log/20260510-020000.c2.auditlog.md`](log/20260510-020000.c2.auditlog.md).
 
 ---
+
+## 2026-05-10 ~13:30 — feature-track ←→ design-track merge to main (`v0.8.9-multi-surface-charcoal-merge`)
+
+**Author:** Claude (Opus 4.7), feature-track session, with Brian (design-track session in parallel)
+**Context:** Both feature-track (C2 multi-surface) and design-track (charcoal-workshop theme + composite kitchen-sink fixture + per-fixture geometry override in harness) reached completion against the same `src/a2glimpse-host.html`. Brian directed feature-track to perform the merge; design-track was simultaneously closing out its own cleanup.
+
+**Did:**
+- Confirmed kitchen-sink fixture is single-surface (the cheap pre-check from prior turn) → no interaction with C2's `:host { min-height }` test-mode gate.
+- Committed feature-track's C2 arc as a single squashed commit (`b6541a4`).
+- `git merge --no-ff design-track` from `session/feature-track`. Auto-merge succeeded for `src/a2glimpse-host.html`, `src/a2glimpse.swift`, and `skills/a2glimpse/SKILL.md`. Conflict resolved in `HANDOFF.md` only — both sides updated the milestone table independently; resolution is a unified chronological table.
+- Build + smoke + mcp tests all green post-merge.
+- **Visual harness re-bless** at the merged hash `a392c3eee7c5`. Old `7be8486d67c6/` directory removed in same commit. 8 of 10 fixtures passed cleanly at the global 0.1% threshold.
+- **Surfaced and worked through a real finding:** the standalone slider fixture and the kitchen-sink composite both exhibit reproducible (~2.18% slider, ~0.26% kitchen-sink) non-determinism in the native `<input type="range">` accent-color paint. Decision (per Brian's call): extend the harness with per-fixture `pixelDiffThreshold` override via `meta.json` rather than lower the global noise floor or mask via skip-list. Slider gets 3.0%, kitchen-sink 0.5%, both with `tolerance_note` discipline anchors.
+- **Surfaced a second non-obvious finding:** when all fixtures run sequentially, occasional WindowServer / mcporter-snap-happy contention causes the test-mode `<a2ui-modal>` auto-open shim to miss a single fixture. Re-running just that fixture passes cleanly. Documented in the parallel-branch knowledge note.
+- Upgraded `20260510-020000.parallel-branch-host-hash.knowledge.md` from UNCERTAIN to VERIFIED on the merge case, with the actual playthrough captured + the per-fixture threshold escape hatch + the contention finding.
+- Tagged `v0.8.9-multi-surface-charcoal-merge` (annotated). Pushed `session/feature-track` to `origin/main` (FF; no force). Tag pushed.
+
+**Considered / rejected:**
+- **Bumping global `THRESHOLD_PERCENT`.** Loses regression sensitivity across the entire suite. Per-fixture override preserves signal where it matters.
+- **Disabling slider + kitchen-sink fixtures via skip-list.** Worse than threshold override — disables regression signal entirely on those fixtures.
+- **Backfilling AUDIT_LOG.md for the v0.8.4 → v0.8.8 gap during this maintenance pass.** Revisionist; per-slice `log/` fragments already exist for each. Append-only discipline says forward, not backfill. Flagged for Brian's awareness; not done.
+- **Re-blessing during the slice (pre-merge) to verify visually.** Rejected the moment design-track parallelism was flagged. Single bless at merge against the combined hash is cheaper than two side-by-side blesses now. Verified protocol works end-to-end.
+
+**Open / next:**
+- The other worktrees (Brian's primary on `main`, the sibling `design-track` worktree) need `git pull` to FF locally. `origin/main` is at `04c8e02`.
+- First production exercise of multi-surface stack against a real Mac. Smoke covers lifecycle but renders one surface; first agent stacking `status` + `diff-review` will validate auto-grow end-to-end.
+- AUDIT_LOG.md gap from `v0.8.3-cluster-handoff` forward. Per-slice fragments exist in `log/`; an aggregation pass at a future quiet moment is optional.
+- Slider non-determinism is now tolerated via threshold; a stable real fix would be a design-track stylist task (likely: pin `accent-color` paint via an explicit slider-track gradient + thumb pseudo-element CSS so the UA's flicker-prone fill region is no longer load-bearing).
+
+---
