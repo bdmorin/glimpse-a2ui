@@ -1,6 +1,6 @@
 # a2glimpse Handoff — Forward Inventory
 
-**Last updated:** 2026-05-10 (post merge of `design-track` charcoal-workshop + kitchen-sink into `session/feature-track` C2 multi-surface — pre-bless against the merged host hash)
+**Last updated:** 2026-05-10 (post r2-shadcn-renderer fork — separate worktree `glimpse-a2ui-shadcn`, branch `r2-shadcn-renderer`, two commits ahead of `origin/main`, not merged)
 
 If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is the durable, cross-session "what's next" list — the canonical source of truth for outstanding work. It supersedes any session-scoped todo lists.
 
@@ -19,12 +19,34 @@ If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowl
 | `v0.8.7-mad-scientist-garage` | Garage theme + shadow-DOM scoping fix + minority-report mode + iconography cheatsheet + visual goldens re-blessed at hash `7be8486d67c6` |
 | `v0.8.8-charcoal-workshop` (design-track) | Charcoal Workshop arc — always-dark canvas + mono typography + looser breathing + forward-compat usageHint variants + input love. Four discrete commits. **PRE-BLESS at branch tip; cumulative bless folded into v0.8.9 merge.** |
 | `v0.8.9-multi-surface-merge` (this merge, **PRE-BLESS**) | C2 multi-surface (vertical stack, per-surface action queues, auto-grow, `self_check`, `__a2glimpse_debug`) + design-track charcoal-workshop theme + kitchen-sink composite fixture + per-fixture geometry override in harness. Awaits cumulative re-bless against the merged host hash. |
+| `r2-shadcn-renderer` (worktree `glimpse-a2ui-shadcn`, **PARALLEL ARC, NOT MERGED**) | Renderer fork — drops the vendored Google Lit IIFE in favor of a Vite + React 19 + Tailwind v4 + shadcn/ui stack. Same A2UI v0.8 wire protocol, same Swift host, same MCP bridge — only the contents of `src/a2glimpse-host.html` change (now generated from `renderer/` via `npm run build:renderer`). Adds rich markdown (react-markdown + remark-gfm), custom diff highlighting, syntax highlighting via lowlight (16-language curated pack). See [`knowledge/20260510-110000.r2-shadcn-renderer-fork.analysis.md`](knowledge/20260510-110000.r2-shadcn-renderer-fork.analysis.md) for fork rationale, architecture, and what's not done. |
 
 The appliance ships. Multiple surfaces stack vertically; the window auto-grows. Per-surface action queues let `await_action` block on one surface while another ticks. Charcoal-workshop theme paints all of it. The kitchen-sink composite fixture is additive (the existing 9 isolated fixtures still earn their keep, per the visual-fixture-consolidation decision doc). Trust boundary holds across all branches.
 
 ## Outstanding Work — durable cross-session todo list
 
 Each item below is **actionable in a future session**. Status reflects what's true on `origin/main` as of this update. Update this file when you complete an item; treat it as the authoritative project todo list.
+
+---
+
+### [ ] R2 — shadcn renderer fork (parallel arc, decision pending merge)
+
+**Worktree:** `glimpse-a2ui-shadcn` (path: `/Users/brahn/src/github.com/bdmorin/glimpse-a2ui-shadcn`)
+**Branch:** `r2-shadcn-renderer` (off `origin/main` at `04c8e02`)
+**Commits:** `c673c76` (fork) + `2248726` (markdown + hljs + auto-grow fix). Pushed to origin.
+**Read first:** [`knowledge/20260510-110000.r2-shadcn-renderer-fork.analysis.md`](knowledge/20260510-110000.r2-shadcn-renderer-fork.analysis.md) — fork rationale, architecture, alternatives weighed.
+
+The renderer is forked. Drop-in replacement for the vendored Lit IIFE: same A2UI v0.8 wire protocol, same Swift host bridge contract, same MCP server, same fixtures. The renderer/ subdir is a Vite + React 19 + TS + Tailwind v4 project; `npm run build:renderer` produces a single self-contained HTML at `src/a2glimpse-host.html`. Component coverage: Column, Row, Card, Text (with rich markdown — bold/italic/lists/links/blockquotes/HRs/GFM tables), Button (primary + secondary), TextField, Slider, MultipleChoice (radio + checkbox modes), CheckBox, Modal, Tabs. Icon stubbed. Fenced code blocks: `diff` gets custom red/green/voltage line tinting; ts/js/py/go/rust/swift/json/yaml/sql/bash/html/css/md/text get hljs syntax highlighting via lowlight (no innerHTML).
+
+**Open decisions / actionables:**
+
+- **Merge to `main` or maintain as parallel renderer?** Brian needs to live with both for a session or two. Current view: `glimpse-a2ui-design` (Lit) for upstream-fidelity work, `glimpse-a2ui-shadcn` (r2) for agent-UI polish. Long-term we likely fold to one — the shadcn one — and retire the Lit-era host.
+- **Visual goldens are wholesale invalid against shadcn.** If r2 merges to main, re-bless required at the new host hash. Threshold tuning likely (Tailwind reset differs from Lit reset; anti-aliasing differs).
+- **mcporter `/opt/homebrew/lib/node_modules/a2glimpse` symlink** still points at `glimpse-a2ui-design`. To drive the shadcn renderer via `mcporter call`, either set `A2GLIMPSE_BINARY_PATH=/Users/brahn/src/github.com/bdmorin/glimpse-a2ui-shadcn/src/a2glimpse` for the session, or `cd glimpse-a2ui-shadcn && npm install -g .` to re-link.
+- **Multi-surface stack visual not exercised** — `App.tsx` loops `snapshot.visible`, but no test has cast two surfaces simultaneously.
+- **Schema gaps** — `renderer/src/a2ui/schema.ts` only types what we render. Add `Image`, `Audio`, `Video`, `DateTimeInput`, `List`, `Divider` when an agent flow needs them.
+- **Action context paths** — `dispatchAction()` resolves `context.value.path` for top-level keys only (no `/foo/bar` deep paths). Adequate for current flows.
+- **Dev experience** — `npm run dev` starts Vite at localhost:5173 but the bridge throws (no WKWebView). Acceptable; we always test through the Swift host. Could add a mock-bridge mode for browser-only iteration if it becomes painful.
 
 ---
 

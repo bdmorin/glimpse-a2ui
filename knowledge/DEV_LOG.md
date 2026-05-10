@@ -1424,3 +1424,37 @@ shadow components render.
 - Slice fragments: [`log/20260510-020000.c2.devlog.md`](log/20260510-020000.c2.devlog.md), [`log/20260510-020000.c2.auditlog.md`](log/20260510-020000.c2.auditlog.md).
 
 ---
+
+## 2026-05-10 ~11:00 — r2-shadcn-renderer fork
+
+**Author:** Claude (Opus 4.7), with Brian
+**Context:** After three weeks of design-track sessions iterating on the vendored Lit IIFE — fixing white-on-white pre blocks, hand-injecting CSS into shadow roots two levels deep, monkey-patching component class prototypes — Brian asked the load-bearing question: "does a2ui put a hard definition on the html you show? can we use something like shadcn to style the canvas?" The answer: A2UI v0.8 is a wire protocol, not a renderer. The Lit IIFE is one consumer of the JSON. We could write our own.
+
+**Did:**
+- Created worktree `glimpse-a2ui-shadcn` on branch `r2-shadcn-renderer` off `origin/main` (`04c8e02`).
+- Scaffolded Vite + React 19 + TypeScript + Tailwind v4 + vite-plugin-singlefile in `renderer/`.
+- Vendored shadcn/ui components: button card input slider checkbox label tabs dialog radio-group.
+- Wrote `a2ui/{schema,store,bridge,Renderer}.{ts,tsx}` — a self-contained renderer that consumes the same A2UI v0.8 JSON wire format and emits shadcn primitives.
+- Bridge contract preserved verbatim: `window.a2glimpse.dispatch(msg)` inbound; `__a2glimpse_host_ready` + `userAction` + `__a2glimpse_resize_to_content` outbound. Swift host unchanged. MCP server unchanged. Test fixtures unchanged.
+- Build pipeline: `npm run build:renderer` runs `vite build` (singlefile plugin produces one HTML with everything inlined), then copies to `src/a2glimpse-host.html`. Same Swift `loadFileURL` path.
+- Component coverage: 11/11 named A2UI v0.8 visible primitives — Column, Row, Card, Text (with usageHint variants), Button (primary + secondary), TextField, Slider, MultipleChoice (radio + checkbox modes), CheckBox, Modal, Tabs. Icon stubbed (lucide-react ready). Two commits: `c673c76` (fork) and `2248726` (markdown + hljs + auto-grow fix).
+- Added rich markdown (react-markdown + remark-gfm) for body Text: bold/italic/lists/links/blockquotes/strikethrough/HRs/GFM tables.
+- Custom diff renderer for ` ```diff ` fenced blocks: red `-` lines, green `+` lines, voltage `@@` hunks, muted `---/+++` file headers.
+- Syntax highlighting via lowlight (highlight.js as hast tree, no innerHTML, walked to React `<span>` elements). Curated 16-language pack: ts/tsx, js/jsx, py, json, bash/sh/zsh/shell, html/xml, css, sql, yaml/yml, md/markdown, go, rust/rs, swift, plaintext.
+- Auto-grow fix: replaced `documentElement.scrollHeight` (ratchets up to viewport floor, never decreases) with `stackRef.getBoundingClientRect().height + body padding`. Window now tracks content shrinking.
+- Theming: one file (`renderer/src/index.css`) drives the entire palette via Tailwind v4 `@theme`. Workshop tokens (paper / paper-up / card / card-up / ink / ink-2 / line / line-soft / voltage / voltage-2 / spark / danger) aliased to shadcn's expected `--color-*` tokens. Zero per-component overrides.
+- Wrote [`20260510-110000.r2-shadcn-renderer-fork.analysis.md`](20260510-110000.r2-shadcn-renderer-fork.analysis.md) — fork rationale, architecture, alternatives weighed, what's NOT done.
+
+**Considered / rejected:**
+- *Path B — Tailwind paint-over Lit IIFE.* Three weeks of design-track work demonstrated the ceiling. Inner shadow-DOM reach impossible without monkey-patching every component. Markdown engine bugs persist. Rejected.
+- *Path C — replace just the markdown engine.* Solves 10% of the problem; same injection mechanism as the rest. If we're writing a markdown renderer we might as well swap the whole thing. Rejected.
+- *Path D — wait for upstream A2UI to fix the renderer.* Indeterminate timeline. Protocol is the contract; renderer is implementation. Rejected.
+
+**Open / next:**
+- Visual goldens are wholesale invalid against shadcn renderer. Re-bless required if/when this branch merges to `main`.
+- mcporter `/opt/homebrew/lib/node_modules/a2glimpse` symlink still points at the design worktree. To drive shadcn renderer via mcporter, either set `A2GLIMPSE_BINARY_PATH` env override or `npm install -g .` from the shadcn worktree.
+- Multi-surface stack visual not exercised — App.tsx loops `snapshot.visible`, but only one surface has been cast at a time so far.
+- Decision: do we eventually fold r2-shadcn-renderer back to `main` and retire the Lit-era host, or maintain both as parallel renderers (different bundle for different aesthetic registers)? Defer until Brian has lived with both for a session or two.
+- HANDOFF.md updated with r2 worktree row.
+
+---
