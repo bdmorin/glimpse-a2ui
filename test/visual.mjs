@@ -258,36 +258,57 @@ function loadFixtureLines(name) {
     .filter(Boolean);
 }
 
-// Per-fixture geometry override. If `<name>.meta.json` exists with a
-// {width, height} pair, use those for spawn + capture validation + crop.
-// Returns the resolved geometry shape: contentWidth/contentHeight (Swift's
-// --width/--height land here, content area only) and capturedHeight (what
-// snap-happy will return, content + 32px titlebar). 1x and 2x (Retina)
-// are both accepted at validation time.
-function fixtureGeometry(name) {
+// Per-fixture meta override. If `<name>.meta.json` exists, parse it once
+// and reuse. Recognized fields:
+//   - width, height          (geometry override, Swift's --width/--height)
+//   - pixelDiffThreshold     (per-fixture flake tolerance, in percent;
+//                             overrides global THRESHOLD_PERCENT)
+//   - purpose, scope         (documentation only; ignored by harness)
+function fixtureMeta(name) {
   const metaPath = join(FIXTURE_DIR, `${name}.meta.json`);
-  if (existsSync(metaPath)) {
-    try {
-      const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
-      const w = Number(meta.width);
-      const h = Number(meta.height);
-      if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
-        return {
-          contentWidth: w,
-          contentHeight: h,
-          capturedHeight: h + TITLEBAR_HEIGHT,
-        };
-      }
-      console.error(`  ! ${name}: meta.json present but invalid (${JSON.stringify(meta)}); using defaults`);
-    } catch (e) {
-      console.error(`  ! ${name}: meta.json parse failed (${e.message}); using defaults`);
-    }
+  if (!existsSync(metaPath)) return {};
+  try {
+    return JSON.parse(readFileSync(metaPath, 'utf8'));
+  } catch (e) {
+    console.error(`  ! ${name}: meta.json parse failed (${e.message}); using defaults`);
+    return {};
+  }
+}
+
+// Resolve geometry for spawn + capture. Uses meta {width, height} if both
+// are valid positive numbers; else the 480x320 default. Returns
+// contentWidth/contentHeight (window content area, what Swift sizes to)
+// and capturedHeight (content + 32px titlebar, what snap-happy returns).
+function fixtureGeometry(name) {
+  const meta = fixtureMeta(name);
+  const w = Number(meta.width);
+  const h = Number(meta.height);
+  if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+    return {
+      contentWidth: w,
+      contentHeight: h,
+      capturedHeight: h + TITLEBAR_HEIGHT,
+    };
+  }
+  if (meta.width !== undefined || meta.height !== undefined) {
+    console.error(`  ! ${name}: meta.json width/height invalid (${JSON.stringify({ w: meta.width, h: meta.height })}); using defaults`);
   }
   return {
     contentWidth: DEFAULT_CONTENT_WIDTH,
     contentHeight: DEFAULT_CONTENT_HEIGHT,
     capturedHeight: DEFAULT_CONTENT_HEIGHT + TITLEBAR_HEIGHT,
   };
+}
+
+// Per-fixture pixel-diff threshold. Falls back to the global default.
+// Used to tolerate known rendering non-determinism (e.g. native-control
+// accent-color paint flicker on `<input type="range">`) without lowering
+// the noise floor for the rest of the suite.
+function fixtureThreshold(name) {
+  const meta = fixtureMeta(name);
+  const t = Number(meta.pixelDiffThreshold);
+  if (Number.isFinite(t) && t >= 0) return t;
+  return THRESHOLD_PERCENT;
 }
 
 async function captureFixture(name, mode) {
@@ -395,18 +416,20 @@ async function captureFixture(name, mode) {
 
     const diffPath = join(snapshotDir(), 'diffs', `${name}.diff.png`);
     const result = await compareImages(goldenPath, capturedPath, diffPath);
-    const pass = result.diffPercent <= THRESHOLD_PERCENT;
+    const threshold = fixtureThreshold(name);
+    const pass = result.diffPercent <= threshold;
     const verdict = pass ? 'PASS' : 'FAIL';
     const pct = result.diffPercent.toFixed(4);
+    const thresholdNote = threshold !== THRESHOLD_PERCENT ? ` (per-fixture threshold ${threshold}%)` : '';
     console.log(
-      `  ${pass ? '✓' : '✗'} ${name}: ${result.diffPixels} / ${result.totalPixels} = ${pct}% [${verdict}]`
+      `  ${pass ? '✓' : '✗'} ${name}: ${result.diffPixels} / ${result.totalPixels} = ${pct}% [${verdict}]${thresholdNote}`
     );
     if (!pass) {
       const actualPath = join(snapshotDir(), `${name}.actual.png`);
       copyFileSync(capturedPath, actualPath);
       console.error(`     diff -> ${diffPath}`);
       console.error(`     actual -> ${actualPath}`);
-      return { name, ok: false, reason: `pixel-diff ${pct}% > ${THRESHOLD_PERCENT}%` };
+      return { name, ok: false, reason: `pixel-diff ${pct}% > ${threshold}%` };
     }
     return { name, ok: true };
   } finally {

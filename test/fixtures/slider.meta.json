@@ -1,0 +1,5 @@
+{
+  "pixelDiffThreshold": 3.0,
+  "purpose": "Slider rendering coverage. Two sliders bound to /vol and /balance.",
+  "tolerance_note": "Native <input type=\"range\"> accent-color renders the filled-track section non-deterministically — captures vary in fill-region width by ~2% even after the harness's 1500ms settle delay. Threshold raised from the 0.1% global default to 3.0% to tolerate this without lowering signal for non-slider fixtures. A stable real regression (theme color change, layout shift, label drift) would still trip this threshold."
+}
