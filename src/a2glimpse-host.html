@@ -75,14 +75,14 @@
        this appliance; renderer components manage their own internal overflow.
        See earlier comment for rationale. */
     overflow: hidden;
-    padding: 20px 24px;
+    padding: 28px 32px;
     box-sizing: border-box;
     /* Charcoal Workshop typeface — mono, IDE / oscilloscope feel. Stack falls
        through Brian's installed Nerd Fonts (CommitMono, Hack) before generic
        JetBrains/SF/system mono. Fonts not installed gracefully degrade. */
     font-family: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "Hack", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.6;
     background: var(--a2g-paper);
     color: var(--a2g-ink);
     /* Material Design tokens consumed by the vendored renderer. Re-pointed at
@@ -10936,48 +10936,61 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
         boxSizing: "border-box",
         border: "2px solid var(--a2g-btn-border)",
         borderRadius: "6px",
-        padding: "10px 18px",
+        padding: "12px 22px",
         background: "var(--a2g-btn-bg)",
         color: "var(--a2g-btn-fg)",
         font: "inherit",
         fontWeight: "600",
         fontSize: "13px",
-        letterSpacing: "0.01em",
+        letterSpacing: "0.02em",
+        textTransform: "uppercase",
         cursor: "pointer",
         boxShadow: "var(--a2g-btn-shadow)",
         transform: "translate(var(--a2g-btn-translate), var(--a2g-btn-translate))",
         transition: "transform 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out",
         outline: "none"
       },
-      // Row — flex container with explicit gap. Without this, Buttons inside
-      // Row run shoulder-to-shoulder. additionalStyles.Row lands on the inner
-      // <section>, which is already display:flex via Row's shadow CSS.
-      Row: { display: "flex", gap: "10px", alignItems: "center" },
-      // Card — same brutalist stamp shadow as buttons, smaller offset.
+      // Row — flex container with explicit gap. Looser breathing: 14px gap
+      // (was 10px) keeps actionable controls visually distinct on the
+      // wider canvas the styling pass is establishing.
+      Row: { display: "flex", gap: "14px", alignItems: "center" },
+      // Card — brutalist stamp, looser inner padding (was 16px) so content
+      // breathes against the border and the dark canvas isn't crowded.
       Card: {
         border: "1.5px solid var(--a2g-line-soft)",
         borderRadius: "8px",
-        padding: "16px",
+        padding: "20px",
         background: "var(--md-sys-color-surface, Canvas)",
         boxShadow: "2px 2px 0 0 var(--a2g-line-soft)"
       },
-      Text: { body: { margin: "0" }, h1: { margin: "0", fontSize: "24px" }, h2: { margin: "0", fontSize: "20px" }, h3: { margin: "0", fontSize: "18px" }, h4: { margin: "0" }, h5: { margin: "0" }, caption: { margin: "0", opacity: "0.75" } },
+      // Text usageHint variants: looser line-height for body / caption,
+      // tighter (display) on h1/h2. Caption opacity dropped slightly to
+      // distinguish it more clearly from body.
+      Text: {
+        body: { margin: "0", lineHeight: "1.6" },
+        h1: { margin: "0 0 4px", fontSize: "26px", fontWeight: "700", letterSpacing: "-0.01em", lineHeight: "1.2" },
+        h2: { margin: "0 0 4px", fontSize: "21px", fontWeight: "700", letterSpacing: "-0.005em", lineHeight: "1.25" },
+        h3: { margin: "0 0 2px", fontSize: "17px", fontWeight: "700", lineHeight: "1.3" },
+        h4: { margin: "0 0 2px", fontSize: "14px", fontWeight: "700", letterSpacing: "0.04em", textTransform: "uppercase" },
+        h5: { margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" },
+        caption: { margin: "0", opacity: "0.66", fontSize: "12px", letterSpacing: "0.02em" }
+      },
       TextField: {
         appearance: "none",
         boxSizing: "border-box",
         width: "100%",
         border: "1.5px solid var(--a2g-tf-border)",
         borderRadius: "6px",
-        padding: "9px 12px",
-        background: "var(--md-sys-color-surface, Canvas)",
+        padding: "11px 14px",
+        background: "var(--a2g-tf-bg)",
         color: "var(--md-sys-color-on-surface, CanvasText)",
         font: "inherit",
-        lineHeight: "1.4",
+        lineHeight: "1.5",
         boxShadow: "var(--a2g-tf-shadow)",
-        transition: "border-color 80ms ease-out, box-shadow 80ms ease-out",
+        transition: "border-color 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out",
         outline: "none"
       },
-      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "var(--a2g-voltage)", cursor: "pointer" },
+      Slider: { appearance: "auto", width: "100%", margin: "10px 0", accentColor: "var(--a2g-voltage)", cursor: "pointer", height: "20px" },
       // Modal: styles the inner <section class="...Modal.element"> wrapper inside
       // the <dialog>. Gives the modal panel card-like chrome. We cannot reach
       // the <dialog> itself from outside the renderer's shadow DOM — its
