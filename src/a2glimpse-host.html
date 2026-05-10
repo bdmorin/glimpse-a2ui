@@ -10963,9 +10963,15 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
         background: "var(--md-sys-color-surface, Canvas)",
         boxShadow: "2px 2px 0 0 var(--a2g-line-soft)"
       },
-      // Text usageHint variants: looser line-height for body / caption,
-      // tighter (display) on h1/h2. Caption opacity dropped slightly to
-      // distinguish it more clearly from body.
+      // Text usageHint variants. The renderer indexes additionalStyles.Text
+      // by `usageHint` value, so any string can be added here as a new
+      // variant key. Standard keys (body, h1-h5, caption) cover typography;
+      // the four callout keys (warn, danger, info, success) below extend
+      // Text into a brutalist alert/chip channel — left-border accent
+      // strip + tinted bg + uppercase eyebrow label feel. Workshop signage
+      // discipline: high-contrast, single-line preferred, agent-driveable.
+      // Document this convention in skills/a2glimpse/SKILL.md so agents
+      // know to reach for it.
       Text: {
         body: { margin: "0", lineHeight: "1.6" },
         h1: { margin: "0 0 4px", fontSize: "26px", fontWeight: "700", letterSpacing: "-0.01em", lineHeight: "1.2" },
@@ -10973,7 +10979,52 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
         h3: { margin: "0 0 2px", fontSize: "17px", fontWeight: "700", lineHeight: "1.3" },
         h4: { margin: "0 0 2px", fontSize: "14px", fontWeight: "700", letterSpacing: "0.04em", textTransform: "uppercase" },
         h5: { margin: "0", fontSize: "12px", fontWeight: "700", letterSpacing: "0.06em", textTransform: "uppercase" },
-        caption: { margin: "0", opacity: "0.66", fontSize: "12px", letterSpacing: "0.02em" }
+        caption: { margin: "0", opacity: "0.66", fontSize: "12px", letterSpacing: "0.02em" },
+        // Callout variants. Each is a block element with a left-border
+        // accent strip in its semantic color, tinted bg, and the rest
+        // of the workshop signage discipline (mono inherited, slight
+        // letter-spacing, padded). Agents pick by intent, not visual.
+        warn: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(255, 176, 32, 0.08)",
+          color: "var(--a2g-voltage)",
+          borderLeft: "4px solid var(--a2g-voltage)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        },
+        danger: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(239, 68, 68, 0.10)",
+          color: "var(--a2g-danger)",
+          borderLeft: "4px solid var(--a2g-danger)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5",
+          fontWeight: "600"
+        },
+        info: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(230, 232, 235, 0.06)",
+          color: "var(--a2g-ink)",
+          borderLeft: "4px solid var(--a2g-line-soft)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        },
+        success: {
+          margin: "0",
+          padding: "10px 14px 10px 16px",
+          background: "rgba(34, 197, 94, 0.10)",
+          color: "var(--a2g-spark)",
+          borderLeft: "4px solid var(--a2g-spark)",
+          borderRadius: "0 4px 4px 0",
+          letterSpacing: "0.02em",
+          lineHeight: "1.5"
+        }
       },
       TextField: {
         appearance: "none",
