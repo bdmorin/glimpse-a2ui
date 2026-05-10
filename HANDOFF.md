@@ -35,7 +35,7 @@ design-track FF-merged + iconography cherry-picked + goldens re-blessed by sub-a
 - **Dark-mode body bg verification** — diagnostic showed `body_bg: rgb(15, 17, 21)` (correct dark token), but screenshots intermittently rendered with a lighter body. Either screencapture quirk or a Swift KVO race. Worth a small repro session.
 - **Hazard-amber callouts** — the inline-code chip treatment looks great. Could extend the same channel via `additionalStyles` for a generic "callout" component or `usageHint="warn"`/`"danger"` variants. Designerly improvement, not blocking.
 - **Audit older Tabs/Modal wrapperPatches** against the corrected lever vocabulary in `knowledge/20260509-220000.investigation-methodology-and-lever-vocabulary.knowledge.md`. They predate this knowledge — verify their light-DOM CSS expectations weren't silently broken by the same shadow-scoping issue.
-- **Visual-fixture consolidation** — 9 fixtures × renderer-hash dirs accumulates re-bless work fast. Worth exploring whether one composite "kitchen-sink" canvas could replace several individual fixtures, trading per-component isolation for fewer pixel-diffs to maintain. Discussed 2026-05-10; no decision yet.
+- **Visual-fixture consolidation** — 9 fixtures × renderer-hash dirs accumulates re-bless work fast. Proposed 9 → 3 shape (kitchen-sink + modal + upstream-bugs) deferred until at least one more cumulative re-bless gives n=2 cost data. Full decision space, trade-offs, trigger conditions, and "what future-me might wish past-me had done" captured at `knowledge/20260510-035000.visual-fixture-consolidation-decision.knowledge.md`. Likely re-revisited after the next design-track styling pass on the canvas.
 
 ### [x] A3 — Agent Skill — shipped 2026-05-09
 
