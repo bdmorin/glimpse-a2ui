@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Markdown } from './Markdown';
 
 const resolveString = (ref: StringRef | undefined, data: DataModel): string => {
   if (!ref) return '';
@@ -77,7 +78,7 @@ const RenderNode = ({ node, ctx }: { node: ComponentNode; ctx: Ctx }) => {
     if (hint === 'h2') return <h2 className="text-lg font-semibold tracking-tight">{text}</h2>;
     if (hint === 'h3') return <h3 className="text-base font-semibold">{text}</h3>;
     if (hint === 'caption') return <p className="text-muted-foreground text-xs italic">{text}</p>;
-    return <p className="leading-relaxed">{renderInlineMarkdown(text)}</p>;
+    return <div className="leading-relaxed"><Markdown source={text} /></div>;
   }
 
   if ('Button' in c) {
@@ -281,37 +282,6 @@ const RenderNode = ({ node, ctx }: { node: ComponentNode; ctx: Ctx }) => {
   }
 
   return <span className="text-destructive text-xs">unsupported: {Object.keys(c)[0]}</span>;
-};
-
-// Inline markdown — `code` chips and fenced ``` blocks. Anything else is
-// passed through as plain text.
-const renderInlineMarkdown = (text: string): React.ReactNode => {
-  if (text.startsWith('```')) {
-    const stripped = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '');
-    return (
-      <pre className="rounded-md border border-border bg-input p-3 overflow-x-auto text-xs leading-relaxed font-mono text-foreground">
-        <code>{stripped}</code>
-      </pre>
-    );
-  }
-  const parts = text.split(/(`[^`]+`)/g);
-  return parts.map((p, i) => {
-    if (p.startsWith('`') && p.endsWith('`')) {
-      return (
-        <code
-          key={i}
-          className="rounded border border-border px-1.5 py-0.5 text-[0.92em] font-mono"
-          style={{
-            background: 'color-mix(in oklab, var(--color-voltage) 20%, var(--color-paper))',
-            color: 'var(--color-voltage)',
-          }}
-        >
-          {p.slice(1, -1)}
-        </code>
-      );
-    }
-    return <span key={i}>{p}</span>;
-  });
 };
 
 export const SurfaceWithId = ({

@@ -71,3 +71,21 @@ body {
   /* App element shrinks-to-content so Swift can auto-grow the window. */
   display: block;
 }
+
+/* highlight.js charcoal-workshop theme — token classes mapped to the
+   workshop palette so syntax-highlighted code stays inside the same
+   visual language as the rest of the surface. */
+.hljs { color: var(--color-ink); background: transparent; }
+.hljs-comment, .hljs-quote { color: var(--color-ink-2); font-style: italic; }
+.hljs-doctag, .hljs-keyword, .hljs-formula, .hljs-meta-keyword, .hljs-selector-tag, .hljs-tag { color: var(--color-voltage); }
+.hljs-name, .hljs-section, .hljs-title { color: var(--color-voltage-2); }
+.hljs-string, .hljs-regexp, .hljs-attribute, .hljs-meta-string { color: var(--color-spark); }
+.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet, .hljs-link { color: var(--color-voltage); }
+.hljs-built_in, .hljs-builtin-name, .hljs-class, .hljs-type { color: #b08bff; } /* lavender — distinct from voltage */
+.hljs-variable, .hljs-template-variable, .hljs-attr, .hljs-property { color: var(--color-ink); }
+.hljs-params { color: var(--color-ink-2); }
+.hljs-meta { color: var(--color-ink-2); }
+.hljs-deletion { background: rgba(239, 68, 68, 0.18); color: var(--color-danger); }
+.hljs-addition { background: rgba(34, 197, 94, 0.18); color: var(--color-spark); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
