@@ -142,7 +142,10 @@
      for visual-regression goldens), so the test-mode branch is unaffected.
      Phase 4. */
   body:not([data-test-mode]) {
-    padding-top: 48px;
+    /* Just enough to clear macOS traffic lights (~22pt) plus a hair of breathing room.
+       Combined with NSWindow.toolbarStyle=.unifiedCompact this gives the slim-titlebar
+       look agents expect. Phase 4 originally set 48px, before the toolbarStyle landed. */
+    padding-top: 28px;
   }
 
   /* Dark-mode token pair. Activated when Swift pushes

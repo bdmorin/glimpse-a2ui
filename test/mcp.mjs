@@ -57,12 +57,13 @@ async function main() {
       "begin_rendering",
       "delete_surface",
       "await_action",
+      "resize",
       "get_info",
       "close",
     ]);
     const got = new Set(tools.tools.map((t) => t.name));
     if (got.size === expected.size && [...expected].every((n) => got.has(n))) {
-      pass(`7 tools registered: ${[...got].sort().join(", ")}`);
+      pass(`${expected.size} tools registered: ${[...got].sort().join(", ")}`);
     } else {
       fail(`tool set mismatch — expected ${[...expected].sort().join(", ")}, got ${[...got].sort().join(", ")}`);
     }

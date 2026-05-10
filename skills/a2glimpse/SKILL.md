@@ -36,6 +36,7 @@ The MCP server `a2glimpse` (registered in mcporter as `a2glimpse`, lifecycle `ke
 | `data_model_update` | Push/replace bound data values. Takes `{surfaceId, contents, path?}`. |
 | `begin_rendering` | Tell the renderer to display. Takes `{surfaceId, root}`. |
 | `await_action` | Block until the user clicks. Takes `{timeoutMs?}` (default 60000, max 600000). |
+| `resize` | Resize the window. Takes `{width, height}` in points (240×160 to 2000×1500). Control command — not bound by the v0.8 trust validator. Use it. The default 480×320 fits a confirm/choice surface; for diffs, command approvals, or longer status text, resize first. |
 | `get_info` | Get window geometry / system info. |
 | `delete_surface` | Remove a surface (`{surfaceId}`). |
 | `close` | Tear down the window. Always call this when you're done. |

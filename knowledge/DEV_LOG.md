@@ -1369,3 +1369,25 @@ shadow components render.
 - Per-slice fragments at `knowledge/log/20260509-172*.{b1,b2,c1}.{devlog,auditlog}.md` and `…180000.a1.*.md` — keep for depth; this aggregate entry is the index, not the substitute.
 
 ---
+
+## 2026-05-09 ~19:30 — Driving the canvas with the canvas (screenshot session)
+
+**Author:** orchestrator (Brahn) + Claude
+**Context:** Brian asked for repo screenshots, gave full creative latitude. I used the skill exactly as written — `mcporter call a2glimpse.<tool>` end-to-end — to paint the seven canonical patterns ON the canvas, then captured each via snap-happy.
+**Did:**
+- Painted 7 surfaces self-referentially (meta confirm, deploy choice, PR file summary, release name capture, status-of-this-screenshot-session, the slim-titlebar diff being applied right now, the git-tag command being approved). All landed under `docs/screenshots/`.
+- README hero grid added — the canvas demonstrating the canvas.
+- **Bridge bug found and fixed mid-flight:** `close` left `readyPromise`/`proc` in a "resolved-but-killed" state, so the next tool call returned the cached dead promise instead of respawning. Now resets state on close. `npm run test:mcp` updated and passing.
+- **Two new control surfaces shipped to make the canvas usable to agents:**
+  - `resize` MCP tool — bypasses the v0.8 trust-boundary validator (it's a control command, not a wire message). 240×160 to 2000×1500.
+  - Slim titlebar — `NSToolbar() + .toolbarStyle = .unifiedCompact` plus dropping host CSS `padding-top: 48px → 28px`. The phase-4 work hid title text but never compressed titlebar height; this completes it. Brian called the regression in the screenshot session.
+- v0.8.7-canvas-control tag.
+**Considered / rejected:**
+- Hand-rolling resize as a stdin lifecycle command outside the MCP tool surface — rejected. Agents drive via mcporter; the bridge is the contract; resize belongs there.
+- Showing MultipleChoice as the multi-choice screenshot — rejected. Renderer collapses it to "Select items" dropdown (known v0.8 quirk; B1 filing). Used a PR-files summary surface instead, which is the realistic shape an agent would build for "review and ship."
+**Open / next:**
+- Skill description doesn't mention `resize` yet in its frontmatter trigger field. Update if the skill ever feels under-fired.
+- CheckBox label rendering bug surfaced (labels invisible while gray decorator bars show). Add to vendored-renderer-pathologies as a known issue.
+- B1 filings now have a third sibling worth filing (CheckBox labels). Add when CLA clears.
+
+---

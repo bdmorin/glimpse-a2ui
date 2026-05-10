@@ -1,10 +1,30 @@
 # a2glimpse
 
-Mac-first proof-of-concept A2UI v0.8 appliance forked from [HazAT/glimpse](https://github.com/HazAT/glimpse).
+Mac-only A2UI v0.8 appliance — a canvas agents own, a response surface for human-AI collaboration. Hardforked from [HazAT/glimpse](https://github.com/HazAT/glimpse).
 
 `a2glimpse` keeps Glimpse's native WKWebView shell and JSON Lines stdio framing, but removes the public HTML/eval interface. It accepts A2UI v0.8 JSONL, renders one trusted Lit-rendered surface, and emits user actions back on stdout.
 
-This is a spike, not a finished product. It is intentionally allowed to fail in public.
+This is built for me. Read `HUMANS.txt`. Agents read `LLMS.txt`.
+
+## What it looks like
+
+The seven canonical patterns, painted by the canvas itself onto the canvas itself. All screenshots below are real surfaces driven through the MCP bridge during the screenshot session — no mockups.
+
+| confirm | choice |
+|---|---|
+| ![confirm](docs/screenshots/01-confirm.png) | ![choice](docs/screenshots/02-choice.png) |
+
+| multi-choice | free-text |
+|---|---|
+| ![multi-choice](docs/screenshots/03-multi-choice.png) | ![free-text](docs/screenshots/04-free-text.png) |
+
+| status | diff-review |
+|---|---|
+| ![status](docs/screenshots/05-status.png) | ![diff-review](docs/screenshots/06-diff-review.png) |
+
+| command-approval | |
+|---|---|
+| ![command-approval](docs/screenshots/07-command-approval.png) | |
 
 ## Install / Build
 
@@ -95,6 +115,7 @@ Stdout emits:
 | `begin_rendering` | Forward a beginRendering |
 | `delete_surface` | Forward a deleteSurface |
 | `await_action` | Block until next userAction (or timeout) |
+| `resize` | Resize the window (control command — bypasses v0.8 validator) |
 | `get_info` | Return child geometry / system info |
 | `close` | Tear down the child window |
 

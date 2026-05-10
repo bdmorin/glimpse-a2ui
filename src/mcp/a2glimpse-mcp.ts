@@ -209,6 +209,18 @@ class A2glimpseChild {
       }
       this.proc.kill("SIGTERM");
     }
+    // Reset state so the next ensureChild() respawns instead of returning the
+    // cached resolved-then-killed promise.
+    this.proc = null;
+    this.readyPromise = null;
+    this.actionQueue = [];
+    for (const p of this.pending) {
+      clearTimeout(p.timer);
+      p.reject(new Error("a2glimpse child closed"));
+    }
+    this.pending = [];
+    this.stdoutBuffer = "";
+    this.lastInfo = null;
   }
 }
 
@@ -327,6 +339,26 @@ server.tool(
     try {
       const action = await child.awaitAction(args.timeoutMs ?? 60000);
       return asContent({ userAction: action });
+    } catch (e) {
+      return errorContent((e as Error).message);
+    }
+  }
+);
+
+server.tool(
+  "resize",
+  "Resize the a2glimpse window. Bypasses the v0.8 trust-boundary validator because it is a control command, not a wire message. Width/height in points. Reasonable bounds enforced (min 240×160, max 2000×1500).",
+  {
+    width: z.number().int().min(240).max(2000),
+    height: z.number().int().min(160).max(1500),
+  },
+  async (args) => {
+    const ready = await ensureChild();
+    if (!ready.ok) return errorContent(ready.reason);
+    try {
+      // Lifecycle command — direct stdin write, NOT through forwardEnvelope (which validates as v0.8).
+      child.send({ type: "resize", width: args.width, height: args.height });
+      return asContent({ resized: { width: args.width, height: args.height } });
     } catch (e) {
       return errorContent((e as Error).message);
     }

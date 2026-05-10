@@ -519,6 +519,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
+            // Compress titlebar to just-fit-traffic-lights height. Without this,
+            // the unified titlebar is still standard ~28pt tall — only the title
+            // text is hidden. unifiedCompact + an empty toolbar is the canonical
+            // slim-titlebar shape on macOS 11+.
+            window.toolbar = NSToolbar()
+            window.toolbarStyle = .unifiedCompact
         }
         if config.floating || config.followCursor {
             window.level = .floating
