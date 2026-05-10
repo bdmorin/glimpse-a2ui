@@ -1,6 +1,6 @@
 # a2glimpse Handoff — Forward Inventory
 
-**Last updated:** 2026-05-10 (design-track session — mad-scientist garage theme + shadow-DOM scoping fix + minority-report mode shipped on `design-track` branch, awaiting merge)
+**Last updated:** 2026-05-10 (post `v0.8.7-mad-scientist-garage` — design-track + iconography merged, goldens re-blessed at hash `7be8486d67c6`)
 
 If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is the durable, cross-session "what's next" list — the canonical source of truth for outstanding work. It supersedes any session-scoped todo lists.
 
@@ -14,30 +14,10 @@ If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowl
 | `v0.8.3-cluster-handoff` | A1 catalog + B1 filings + B2 runbook + C1 unsigned `.app` (parallel slice fan-out) |
 | `v0.8.4-mcp-bridge` | A2: `a2glimpse-mcp` MCP bridge over mcporter daemon |
 | `v0.8.5-menubar-pet` | Menubar pet mode (Petdex-format compat, Finder-launch is fun, not a stub) |
-| `v0.8.6-…` (head of `main`) | A3 agent skill, HUMANS/LLMS rebrand, MCP resize tool, slim titlebar, B1 fourth filing |
-| `design-track` (unmerged) | Mad-scientist garage theme + shadow-DOM scoping fix + investigation methodology knowledge + minority-report mode |
-| `worktree-agent-a3ded460ceddc815f` (unmerged) | Iconography cheatsheet (~330 Material Symbols) + SKILL.md update |
+| `v0.8.6-agent-skill` | A3 agent skill, HUMANS/LLMS rebrand, MCP resize tool, slim titlebar, B1 fourth filing |
+| `v0.8.7-mad-scientist-garage` (head of `main`) | Garage theme + shadow-DOM scoping fix + minority-report mode + iconography cheatsheet + visual goldens re-blessed at hash `7be8486d67c6` |
 
-The appliance ships. MCP bridge is wired and verified end-to-end. Menubar mode gives the `.app` a graceful direct-launch behavior. Trust boundary holds.
-
-## Branch state — what's queued for merge
-
-Two unmerged branches diverged from `main` at `0507ab6`. Both are ready to merge; orchestrator owns the merge per `knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md`.
-
-### `design-track` (4 commits ahead)
-
-```
-49d010b feat(theme): minority-report mode — wire --frameless --transparent for floating-on-workspace controls
-14bb829 docs(knowledge): three-round CSS investigation method + corrected five-lever vocabulary
-67774ae fix(theme): inject pseudo-class CSS into shadow scope where it can match — primary/secondary actually differentiate now
-3a0dece feat(theme): mad-scientist garage — chunky buttons, hazard amber, brutalist shadows
-```
-
-Touches `src/a2glimpse-host.html` (theme + shadow injection) and `src/a2glimpse.swift` (transparent-mode body attribute push). Adds two knowledge docs.
-
-### `worktree-agent-a3ded460ceddc815f` (2 commits ahead)
-
-Adds `skills/a2glimpse/MATERIAL-ICONS.md` (curated ~330-icon cheatsheet across 10 intent categories) and updates `skills/a2glimpse/SKILL.md` with an Iconography section. No conflicts expected with design-track.
+The appliance ships. MCP bridge is wired and verified end-to-end. Menubar mode gives the `.app` a graceful direct-launch behavior. Visual regression at 0.0000% noise floor across 9 fixtures at the new hash. Trust boundary holds.
 
 ## Outstanding Work — durable cross-session todo list
 
@@ -45,28 +25,17 @@ Each item below is **actionable in a future session**. Status reflects what's tr
 
 ---
 
-### [ ] DT — Design-track merge + follow-ups
+### [x] DT — Design-track merge + re-bless — shipped 2026-05-10 (`v0.8.7-mad-scientist-garage`)
 
-**Status:** four commits on `design-track` (see "Branch state" above) — visually verified, MCP integration test green, no conflicts with `main`. Unmerged by choice so visual goldens can re-bless cumulatively after merge.
+design-track FF-merged + iconography cherry-picked + goldens re-blessed by sub-agent at hash `7be8486d67c6` (9/9 fixtures at 0.0000% diff). Branch + agent worktree cleaned up. Tag created.
 
-**What needs to happen, in order:**
-
-1. **Merge `design-track` to main** — fast-forward fine; rebase first if main has moved.
-2. **Re-bless visual goldens cumulatively.** All `test/__snapshots__/<old-hash>/*.png` will diff because the rendered chrome legitimately changed (button weight, brutalist shadows, hazard amber chips, primary/secondary differentiation, slim titlebar interaction with new tokens). Per `knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md` cumulative-rebless protocol:
-   ```
-   npm run test:visual:update
-   git rm -r test/__snapshots__/<old-hash>/
-   git add test/__snapshots__/<new-hash>/
-   git commit -m "test(visual): re-bless goldens at <new-hash>"
-   ```
-3. **Audit prior wrapperPatches** against the corrected lever vocabulary in `knowledge/20260509-220000.investigation-methodology-and-lever-vocabulary.knowledge.md`. Tabs and Modal patches predate this knowledge — verify their light-DOM CSS expectations weren't silently broken by the same shadow-scoping issue. If yes, upgrade to surface-shadow injection.
-4. **Tag `v0.8.7-mad-scientist-garage`** after re-bless.
-
-**Optional follow-ups, defer-friendly:**
+**Optional follow-ups** (defer-friendly; were noted during the design-track session, not blocking):
 
 - **Pre-block content rendering bug** — fenced ` ``` ` blocks inside Cards sometimes render an empty gray rectangle instead of the diff text. Reproduced once, not always. Likely an interaction between the markdown engine's parsing of literal `\n` in JSON-emitted `literalString` and the renderer's Card-wrapping. Investigation queued.
-- **Dark-mode body bg verification** — diagnostic in this session showed `body_bg: rgb(15, 17, 21)` (correct dark token), but screenshots intermittently rendered with a lighter body. Either screencapture quirk or a Swift KVO race. Worth a small repro session.
-- **Hazard-amber callouts** — the inline-code chip treatment looks great. Could extend the same channel to `additionalStyles` for a generic "callout" Component or `usageHint="warn"`/`"danger"` variants. Designerly improvement, not blocking.
+- **Dark-mode body bg verification** — diagnostic showed `body_bg: rgb(15, 17, 21)` (correct dark token), but screenshots intermittently rendered with a lighter body. Either screencapture quirk or a Swift KVO race. Worth a small repro session.
+- **Hazard-amber callouts** — the inline-code chip treatment looks great. Could extend the same channel via `additionalStyles` for a generic "callout" component or `usageHint="warn"`/`"danger"` variants. Designerly improvement, not blocking.
+- **Audit older Tabs/Modal wrapperPatches** against the corrected lever vocabulary in `knowledge/20260509-220000.investigation-methodology-and-lever-vocabulary.knowledge.md`. They predate this knowledge — verify their light-DOM CSS expectations weren't silently broken by the same shadow-scoping issue.
+- **Visual-fixture consolidation** — 9 fixtures × renderer-hash dirs accumulates re-bless work fast. Worth exploring whether one composite "kitchen-sink" canvas could replace several individual fixtures, trading per-component isolation for fewer pixel-diffs to maintain. Discussed 2026-05-10; no decision yet.
 
 ### [x] A3 — Agent Skill — shipped 2026-05-09
 
