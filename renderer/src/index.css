@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Charcoal Workshop tokens — committed-dark agent surface.
+   Inversion ladder mirrors the Lit-era theme: paper (deepest) → card-up
+   (most-elevated), ink (text), voltage (accent). The shadcn renderer
+   resolves these via the @theme block below so any shadcn primitive
+   that consults --background, --foreground, --primary, etc. lands on
+   the right charcoal value without per-component overrides. */
+
+@theme {
+  --color-paper: #0c0d10;
+  --color-paper-up: #14161b;
+  --color-card: #1a1d22;
+  --color-card-up: #262a31;
+  --color-ink: #e6e8eb;
+  --color-ink-2: #b3b8c0;
+  --color-line: #e6e8eb;
+  --color-line-soft: #3a3f48;
+  --color-voltage: #ffb020;
+  --color-voltage-2: #f59e0b;
+  --color-spark: #22c55e;
+  --color-danger: #ef4444;
+
+  /* shadcn token aliases — components that read these resolve to charcoal. */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-card-background: var(--color-card);
+  --color-card-foreground: var(--color-ink);
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper);
+  --color-secondary: var(--color-card);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted: var(--color-card);
+  --color-muted-foreground: var(--color-ink-2);
+  --color-accent: var(--color-voltage);
+  --color-accent-foreground: var(--color-paper);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: var(--color-ink);
+  --color-border: var(--color-line-soft);
+  --color-input: var(--color-paper-up);
+  --color-ring: var(--color-voltage);
+
+  --font-mono: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: var(--font-mono);
+
+  --radius: 6px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "ss02", "calt", "liga", "kern";
+}
+
+body {
+  padding: 28px 32px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#root {
+  /* App element shrinks-to-content so Swift can auto-grow the window. */
+  display: block;
+}
