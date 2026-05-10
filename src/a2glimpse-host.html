@@ -233,6 +233,35 @@
     --a2g-line-soft: #4a5160;
   }
 </style>
+<style id="a2glimpse-transparent-mode">
+/* Minority Report mode — activated when Swift launches with --transparent
+   (typically paired with --frameless). NSWindow + WKWebView are already
+   transparent at the AppKit/WebKit layer; this CSS strips the canvas so
+   what remains is just the rendered components floating on the desktop.
+
+   Component cards, buttons, modals etc. retain their own backgrounds
+   (set via additionalStyles in the IIFE), so they're visible as solid
+   surfaces against whatever's behind. The brutalist 2px-offset shadows
+   give the floating cards an honest cast-shadow against any backdrop.
+
+   Trade-off: text outside a Card sits directly on the desktop and may
+   read poorly against busy wallpapers. Best practice for transparent
+   mode is to wrap content in Cards. */
+html[data-transparent], html[data-transparent] body[data-transparent] {
+  background: transparent !important;
+}
+body[data-transparent] {
+  /* Strip the unified-titlebar top padding — there's no titlebar in
+     frameless mode, so content flows from the top of the window. */
+  padding-top: 0 !important;
+  /* Side padding stays — gives components breathing room from the
+     window edges. Drop further if you want true edge-to-edge. */
+}
+/* Inputs (TextField, MultipleChoice etc.) without a parent Card need
+   their own backgrounds in transparent mode — they're styled via
+   additionalStyles inline, which already uses var(--md-sys-color-surface)
+   from body's tokens, so they render solid. No-op here, just a note. */
+</style>
 <style id="a2glimpse-test-mode">
 /* Inert by default; activates only when Swift sets body[data-test-mode] in --test-mode. */
 body[data-test-mode] *, body[data-test-mode] *::before, body[data-test-mode] *::after {
