@@ -2,11 +2,14 @@
 // child, then drives it via an MCP Client over stdio.
 //
 // Verifies:
-//   - all 7 tools are registered
+//   - all 9 tools are registered
 //   - surface_update / data_model_update / begin_rendering forward to child
 //   - await_action returns the synthetic userAction the fake emits
+//   - await_action with surfaceId filter routes per-surface (C2)
+//   - self_check returns introspection JSON (C2)
 //   - get_info round-trips
 //   - trust-boundary validator rejects html / file / eval / unknown top-key
+//   - trust-boundary rejections appear in self_check.last_rejections (C2)
 //   - close tears down the child cleanly
 
 import { fileURLToPath } from "node:url";
@@ -59,6 +62,7 @@ async function main() {
       "await_action",
       "resize",
       "get_info",
+      "self_check",
       "close",
     ]);
     const got = new Set(tools.tools.map((t) => t.name));
@@ -101,7 +105,40 @@ async function main() {
       fail(`await_action unexpected: ${JSON.stringify(aa)}`);
     }
 
-    // 3. get_info
+    // 3. Multi-surface routing: queue two surfaces' actions, drain by filter.
+    //    The fake emits a userAction in response to each beginRendering, so
+    //    we drive two beginRenderings back-to-back and then drain in reverse
+    //    order via the surfaceId filter.
+    await client.callTool({
+      name: "begin_rendering",
+      arguments: { surfaceId: "alpha", root: "root" },
+    });
+    await client.callTool({
+      name: "begin_rendering",
+      arguments: { surfaceId: "beta", root: "root" },
+    });
+    // Settle: both fake actions need to land before we drain.
+    await new Promise((r) => setTimeout(r, 50));
+    const dBeta = await client.callTool({
+      name: "await_action",
+      arguments: { timeoutMs: 1000, surfaceId: "beta" },
+    });
+    if (parseTextContent(dBeta)?.userAction?.surfaceId === "beta" && !dBeta.isError) {
+      pass("await_action with surfaceId='beta' drains beta action out-of-order");
+    } else {
+      fail(`filtered await unexpected: ${JSON.stringify(dBeta)}`);
+    }
+    const dAlpha = await client.callTool({
+      name: "await_action",
+      arguments: { timeoutMs: 1000, surfaceId: "alpha" },
+    });
+    if (parseTextContent(dAlpha)?.userAction?.surfaceId === "alpha" && !dAlpha.isError) {
+      pass("await_action with surfaceId='alpha' drains alpha action");
+    } else {
+      fail(`filtered await unexpected: ${JSON.stringify(dAlpha)}`);
+    }
+
+    // 4. get_info
     const gi = await client.callTool({ name: "get_info", arguments: {} });
     const giPayload = parseTextContent(gi);
     if (giPayload?.info?.fake === true && !gi.isError) {
@@ -110,7 +147,7 @@ async function main() {
       fail(`get_info unexpected: ${JSON.stringify(gi)}`);
     }
 
-    // 4. Trust boundary — html should be rejected at any depth
+    // 5. Trust boundary — html should be rejected at any depth
     const evil = await client.callTool({
       name: "surface_update",
       arguments: {
@@ -125,7 +162,27 @@ async function main() {
       fail(`trust-boundary did NOT reject html: ${JSON.stringify(evil)}`);
     }
 
-    // 5. await_action timeout
+    // 6. self_check returns populated introspection (after rejection above)
+    const sc = await client.callTool({ name: "self_check", arguments: {} });
+    const scPayload = parseTextContent(sc);
+    if (
+      !sc.isError &&
+      scPayload?.bridge?.version &&
+      scPayload?.child?.alive === true &&
+      typeof scPayload?.child?.messages_sent === "number" &&
+      Array.isArray(scPayload?.last_rejections) &&
+      scPayload.last_rejections.length >= 1 &&
+      /forbidden key 'html'/.test(scPayload.last_rejections[0]?.reason ?? "") &&
+      Array.isArray(scPayload?.last_actions) &&
+      scPayload.last_actions.length >= 1 &&
+      Array.isArray(scPayload?.trust_boundary?.allowed_top_keys)
+    ) {
+      pass(`self_check populated (rejections=${scPayload.last_rejections.length}, actions=${scPayload.last_actions.length})`);
+    } else {
+      fail(`self_check unexpected: ${JSON.stringify(scPayload)}`);
+    }
+
+    // 7. await_action timeout
     const timedOut = await client.callTool({
       name: "await_action",
       arguments: { timeoutMs: 100 },
@@ -136,7 +193,7 @@ async function main() {
       fail(`await_action did not time out: ${JSON.stringify(timedOut)}`);
     }
 
-    // 6. close tears child down
+    // 8. close tears child down
     const closed = await client.callTool({ name: "close", arguments: {} });
     if (parseTextContent(closed)?.closed === true && !closed.isError) {
       pass("close acknowledged");

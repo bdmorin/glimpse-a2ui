@@ -1391,3 +1391,36 @@ shadow components render.
 - B1 filings now have a third sibling worth filing (CheckBox labels). Add when CLA clears.
 
 ---
+
+## 2026-05-10 ~02:00 — C2 multi-surface (feature-track session, design-track in parallel)
+
+**Author:** Claude (Opus 4.7), feature-track session, with Brian
+**Context:** B1 (CLA), C1 (Apple Dev), B2 (upstream) all blocked. A3 shipped (the stated C2 pre-condition). Brian opened a parallel `design-track` session for slice D so feature-track was instructed not to step on it. C2 was the next pickable item — and a real new capability ("status while diff awaits approval"), not just polish.
+
+**Did:**
+- Sibling-dir worktree at `../glimpse-a2ui-feature-track` on `session/feature-track`. Outside `.claude/worktrees/` so it's human-visible and not subject to agent-scoped lock cleanup.
+- Three design calls before code: vertical stack (over tabs/multi-window); optional `surfaceId` filter on `await_action` (over required-or-none); auto-grow window with **no agent-facing size knob** — Brian's mid-implementation correction made this explicit.
+- **Bridge:** per-surface `Map<surfaceId, userAction[]>` queues; FIFO-with-filter routing (filtered awaiters don't steal cross-surface actions); `self_check` tool returning bridge/child/queue/awaits/last-actions/last-rejections snapshot via a `RingBuffer<T>` last-N. 9 tools total. 11/11 mcp-test assertions green.
+- **Host wrapper:** removed single-surface guard; visible-stack array + `tick` counter; render iterates and wraps reserved `__a2glimpse_debug` surfaceId in a dashed-monospace card; ResizeObserver pings Swift on every reflow with content height; `min-height: 100vh` on `:host` gated on `body[data-test-mode]` to preserve design-track's visual baseline byte-stable.
+- **Swift:** `__a2glimpse_resize_to_content` handler — sub-2px deadband to break ResizeObserver feedback loops, capped at visible screen height, gated off in test/statusItem modes.
+- **Docs:** SKILL.md gained Multi-surface and Debug-surface sections plus updated tool table; README constraint removed; HANDOFF C2 → `[x]`; `v0.8.8-multi-surface` tag added to milestone table.
+
+**Considered / rejected:**
+- **Tabs presentation.** Reuses `<a2ui-tabs>` but defeats the load-bearing parallel-status use case.
+- **Required `surfaceId` on `await_action`.** Too strict — agents not caring about ordering would have to invent disambiguation. Optional filter with unfiltered fallback covers both modes.
+- **Bridge-side privileged debug rendering.** Rejected — would punch a hole in the trust boundary just for ergonomics. Convention-based reserved surfaceId achieves the same UX without breaching.
+- **Re-blessing all visual goldens during the slice.** Rejected the moment design-track parallelism was flagged. Single re-bless at merge against the combined hash is cheaper than two side-by-side blesses now.
+- **Auto-grow width.** Vertical stack means height is the natural growth axis; horizontal flapping with text reflow would feel jittery.
+
+**Failures and recoveries:**
+- TS parameter properties tripped Node 22's strip-only mode. Refactored to explicit field assignment.
+- Smoke test regressed on `userAction.surfaceId` after removing `A2GlimpseApp.surfaceId` — `detail.sourceComponent.surfaceId` propagation isn't bullet-proof, the prior code papered over it. Fix: when exactly one surface is visible, fall back to that; else `"@default"`.
+- Initial `:host` change collapsed test-mode card vertically. Eyeballed via single-fixture bless, confirmed visible drift, gated `min-height` on `data-test-mode`. Did not bless the rest.
+
+**Open / next:**
+- Uncommitted on `session/feature-track`. Pending Brian go-ahead and merge sequencing with `design-track`.
+- Merge-time golden re-bless against the combined hash. Single bless, eyeball against prior baseline. Protocol now captured in [`20260510-020000.parallel-branch-host-hash.knowledge.md`](20260510-020000.parallel-branch-host-hash.knowledge.md).
+- First production exercise of multi-surface stack against a real Mac. Smoke test covers lifecycle but renders one surface; first agent stacking `status` + `diff-review` will validate auto-grow end-to-end.
+- Slice fragments: [`log/20260510-020000.c2.devlog.md`](log/20260510-020000.c2.devlog.md), [`log/20260510-020000.c2.auditlog.md`](log/20260510-020000.c2.auditlog.md).
+
+---

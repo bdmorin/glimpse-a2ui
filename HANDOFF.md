@@ -1,6 +1,6 @@
 # a2glimpse Handoff — Forward Inventory
 
-**Last updated:** 2026-05-09 (post `v0.8.5-menubar-pet`)
+**Last updated:** 2026-05-09 (post `v0.8.8-multi-surface`)
 
 If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is the durable, cross-session "what's next" list — the canonical source of truth for outstanding work. It supersedes any session-scoped todo lists.
 
@@ -14,8 +14,10 @@ If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowl
 | `v0.8.3-cluster-handoff` | A1 catalog + B1 filings + B2 runbook + C1 unsigned `.app` (parallel slice fan-out) |
 | `v0.8.4-mcp-bridge` | A2: `a2glimpse-mcp` MCP bridge over mcporter daemon |
 | `v0.8.5-menubar-pet` | Menubar pet mode (Petdex-format compat, Finder-launch is fun, not a stub) |
+| `v0.8.7-canvas-control` | Agent resize tool, slim titlebar fix, CheckBox filing #4 |
+| `v0.8.8-multi-surface` | C2: vertical stack, per-surface await queues, auto-grow window, `self_check`, `__a2glimpse_debug` |
 
-The appliance ships. MCP bridge is wired and verified end-to-end. Menubar mode gives the `.app` a graceful direct-launch behavior. Visual regression at 0.0000% noise floor across 9 fixtures. Trust boundary holds.
+The appliance ships. Multiple surfaces stack and the window auto-grows. Per-surface action queues let one surface block while others tick. Trust boundary holds. Visual goldens are pinned by host hash; design-track will rotate the hash when its work lands and re-bless once at merge.
 
 ## Outstanding Work — durable cross-session todo list
 
@@ -118,19 +120,15 @@ Cosmetic; non-blocking. No order; pick by mood.
 
 ---
 
-### [ ] C2 — Multi-surface support
+### [x] C2 — Multi-surface support — shipped 2026-05-09
 
-**Status:** deliberate POC scope; defer until A3 ships.
+**Path:** `src/a2glimpse-host.html` (stack render) · `src/mcp/a2glimpse-mcp.ts` (per-surface queues + `self_check`) · `src/a2glimpse.swift` (auto-grow handler).
 
-**What:** Currently single-surface only. A2UI's native concept supports N surfaces per process; the renderer Lit components can render multiple `<a2ui-surface>` elements. Adding multi-surface means:
-- Removing single-surface enforcement in `src/a2glimpse.swift`
-- Tabbed or stacked surface presentation in the host page
-- Action routing by `surfaceId` (already part of the wire shape — would need bridge changes)
-- A close-individual-surface command on the public stdin
+Multiple surfaces now stack vertically in one window; each `begin_rendering` adds to the visible stack and the window auto-grows to fit content. `delete_surface` removes and the window auto-shrinks. Per-surface FIFO action queues; `await_action` accepts an optional `surfaceId` filter (omit → next from any surface in insertion order).
 
-**Effort:** 2 sessions.
+New tools: `self_check` (bridge introspection — child PID/uptime/message counts, host info, queue depths, pending awaits, last 16 actions, last 16 trust-boundary rejections, validator allowlist). Reserved `__a2glimpse_debug` surfaceId renders into a dashed-monospace wrapper for in-window state echo.
 
-**Pre-conditions:** A3 should ship first; coding-agent UX rarely needs concurrent surfaces in v1.
+Test mode geometry stays locked (visual goldens preserved); auto-grow gated to production. `notifyContentSize()` only fires outside test mode. The Swift handler caps height at the visible screen and ignores sub-2px deltas to prevent ResizeObserver oscillation.
 
 ---
 

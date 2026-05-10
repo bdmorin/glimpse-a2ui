@@ -32,13 +32,14 @@ The MCP server `a2glimpse` (registered in mcporter as `a2glimpse`, lifecycle `ke
 
 | Tool | What it does |
 |---|---|
-| `surface_update` | Replace the surface's component tree. Takes `{surfaceId, components}`. |
+| `surface_update` | Replace a surface's component tree. Takes `{surfaceId, components}`. Multiple surfaceIds coexist in a vertical stack. |
 | `data_model_update` | Push/replace bound data values. Takes `{surfaceId, contents, path?}`. |
-| `begin_rendering` | Tell the renderer to display. Takes `{surfaceId, root}`. |
-| `await_action` | Block until the user clicks. Takes `{timeoutMs?}` (default 60000, max 600000). |
-| `resize` | Resize the window. Takes `{width, height}` in points (240×160 to 2000×1500). Control command — not bound by the v0.8 trust validator. Use it. The default 480×320 fits a confirm/choice surface; for diffs, command approvals, or longer status text, resize first. |
-| `get_info` | Get window geometry / system info. |
-| `delete_surface` | Remove a surface (`{surfaceId}`). |
+| `begin_rendering` | Tell the renderer to display the named surface. Takes `{surfaceId, root}`. Adds the surface to the visible stack. |
+| `await_action` | Block until a userAction arrives. Takes `{timeoutMs?, surfaceId?}`. With `surfaceId`, only matches actions from that surface (others queue separately). Without, returns the next from any surface. Default 60000 ms, max 600000. |
+| `delete_surface` | Remove a surface from the stack (`{surfaceId}`). Window auto-shrinks. |
+| `resize` | **Optional override.** The window auto-grows vertically to fit content; you only need this to widen the window or pin a fixed size. `{width, height}` in points, 240×160 to 2000×1500. |
+| `get_info` | Window geometry and system info. |
+| `self_check` | **Bridge introspection — like /doctor.** Returns a JSON snapshot: bridge version, child PID/uptime/message counts, host info, per-surface queue depths, pending awaits, last actions, last trust-boundary rejections, validator allowlist. Use when something looks wrong before guessing. |
 | `close` | Tear down the window. Always call this when you're done. |
 
 The bridge validates everything: `html`, `file`, and `eval` keys at any depth are rejected. Don't try.
@@ -213,12 +214,68 @@ Same shape as `diff-review`, body is the command, verbs are `approve`/`deny`. Us
 
 Returned: `context.answer` is `"approve"` or `"deny"`.
 
+## Multi-surface — stack patterns concurrently
+
+You are not limited to one surface at a time. The window is a vertical stack — each `begin_rendering` adds a surface, each `delete_surface` removes one, and the window auto-grows / auto-shrinks to fit. Use this when one round-trip needs more than one role:
+
+- **Status + diff-review.** A persistent `status` surface ticks at the top while `diff-review` waits for an answer below.
+- **Command-approval + sub-status.** Show what you're about to run AND a stream of "why" context next to it.
+- **Form + live preview.** A `free-text` form on top, a status surface below mirroring how the eventual output will look.
+
+Two rules and one new tool surface:
+
+1. **Per-surface action queues.** Each surface has its own FIFO. `await_action {surfaceId: "diff"}` only matches actions from `"diff"` — the status surface's actions queue up until you ask for them (or never, if status doesn't have buttons).
+2. **Insertion order = stack order.** First `begin_rendering` is on top; subsequent ones append below. Use `delete_surface` to remove; the window shrinks. Don't re-`begin_rendering` an already-visible surface to "move" it — it's a no-op.
+3. **`await_action` without a `surfaceId`** falls back to "give me the next action from any surface in insertion order" — useful when you genuinely don't care which surface the user touched first.
+
+Minimal stacked example:
+
+```bash
+# Top: status
+mcporter call a2glimpse.surface_update '{"surfaceId":"status","components":[
+  {"id":"root","component":{"Card":{"child":"col"}}},
+  {"id":"col","component":{"Column":{"children":{"explicitList":["t","s"]}}}},
+  {"id":"t","component":{"Text":{"usageHint":"h3","text":{"literalString":"Refactoring auth module"}}}},
+  {"id":"s","component":{"Text":{"text":{"path":"/step"}}}}
+]}'
+mcporter call a2glimpse.data_model_update '{"surfaceId":"status","contents":[{"key":"step","valueString":"1 of 3 — scanning"}]}'
+mcporter call a2glimpse.begin_rendering '{"surfaceId":"status","root":"root"}'
+
+# Bottom: diff approval
+mcporter call a2glimpse.surface_update '{"surfaceId":"diff","components":[ /* diff-review pattern */ ]}'
+mcporter call a2glimpse.begin_rendering '{"surfaceId":"diff","root":"root"}'
+
+# While we wait for the user's diff click, keep ticking status
+mcporter call a2glimpse.data_model_update '{"surfaceId":"status","contents":[{"key":"step","valueString":"2 of 3 — building"}]}'
+
+# Filtered await: only return when the user touches "diff"
+mcporter call a2glimpse.await_action '{"surfaceId":"diff","timeoutMs":600000}'
+
+# When done, peel surfaces away
+mcporter call a2glimpse.delete_surface '{"surfaceId":"diff"}'
+mcporter call a2glimpse.delete_surface '{"surfaceId":"status"}'
+mcporter call a2glimpse.close '{}'
+```
+
+## Debug surface — `__a2glimpse_debug` and `self_check`
+
+When the visual is wrong or the bridge feels stuck, two introspection paths exist:
+
+- **`self_check`** is for *you*. Returns a JSON snapshot of bridge state — child PID/uptime, host info, queue depths per surface, pending awaits, last 16 actions, last 16 trust-boundary rejections, the validator allowlist. Read it before guessing. This is the cold-context dump for "what's actually happening right now."
+- **`__a2glimpse_debug`** is a reserved surfaceId you can render *into*. Send any A2UI components there and it appears in the stack inside a dashed monospace-styled wrapper labeled "debug · __a2glimpse_debug". Useful when you want the *user* to see your internal state alongside the working surfaces — e.g. surfacing the path you're about to write to, or echoing the data model you've bound. The bridge doesn't gate it; it's a convention. Render normal A2UI components into it; it just gets distinct chrome so it reads as "behind the curtain."
+
+Order of operations when debugging:
+
+1. Call `self_check` — covers 80% of "WTF is happening" without rendering anything.
+2. If the visual itself is the bug, render a `__a2glimpse_debug` surface alongside the broken one and have it echo the data model / surface id / last-known state.
+3. If the renderer crashed (blank surface, no error), check `self_check.last_rejections` and `self_check.host` — host info reflects the renderer's last successful ready.
+
 ## Conventions you must follow
 
 - **`action.name` mirrors the pattern name** — `confirm`, `choice`, `multi-choice`, `free-text`, `diff-review`, `command-approval`. (`status` has no action.) Future-you reading the JSONL log appreciates this.
 - **Discriminate on `context`, not on `sourceComponentId`.** Component ids are scaffolding. The contract is `context.answer`, `context.env`, `context.files`, etc.
 - **Bind inputs via data-model paths** (`{"path":"/x"}`). Carry values out via `context: [{key:"x", value:{path:"/x"}}]` on the submit button. Don't try to poll the renderer for intermediate state.
-- **One surface per pattern.** Don't compose two patterns into one window. Issue them sequentially.
+- **One pattern per surface.** Don't compose two patterns into one surface — the catalog patterns are designed standalone. To run two patterns at once, use *two surfaces* and stack them (see Multi-surface above).
 - **`surfaceId` is opaque.** Use a stable per-flow id so subsequent updates target the right surface.
 - **Always call `close` when done.** The bridge keeps the child warm between calls — but you own when the user's window goes away.
 

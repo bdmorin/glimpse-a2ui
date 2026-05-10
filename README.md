@@ -98,9 +98,14 @@ Stdout emits:
 
 - macOS only.
 - A2UI v0.8 only.
-- Single surface only.
 - No public HTML, file, or eval command.
 - The Lit renderer host is vendored as `src/a2glimpse-host.html` for the POC.
+
+Multiple surfaces stack vertically in one window; the window auto-grows
+to fit content. Per-surface action queues let an agent block on one
+surface while another keeps emitting state. The reserved
+`__a2glimpse_debug` surfaceId renders with distinct chrome for in-window
+introspection.
 
 ## MCP Bridge (`a2glimpse-mcp`)
 
@@ -112,11 +117,12 @@ Stdout emits:
 |---|---|
 | `surface_update` | Forward an A2UI v0.8 surfaceUpdate |
 | `data_model_update` | Forward a dataModelUpdate |
-| `begin_rendering` | Forward a beginRendering |
-| `delete_surface` | Forward a deleteSurface |
-| `await_action` | Block until next userAction (or timeout) |
-| `resize` | Resize the window (control command — bypasses v0.8 validator) |
+| `begin_rendering` | Forward a beginRendering (adds the surface to the visible stack) |
+| `delete_surface` | Forward a deleteSurface (removes from stack; window auto-shrinks) |
+| `await_action` | Block until next userAction. Optional `surfaceId` filters per-surface queues |
+| `resize` | Optional manual resize override (window auto-grows to content by default) |
 | `get_info` | Return child geometry / system info |
+| `self_check` | Bridge introspection — child state, queue depths, last actions, last rejections |
 | `close` | Tear down the child window |
 
 ### mcporter config

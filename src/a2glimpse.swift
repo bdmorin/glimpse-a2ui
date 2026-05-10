@@ -1170,6 +1170,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScri
                 return
             }
 
+            if json["__a2glimpse_resize_to_content"] as? Bool == true {
+                // Auto-grow: the host wrapper's ResizeObserver pings us with
+                // the rendered content height after every layout commit. We
+                // adjust the window's content height (width unchanged — the
+                // agent controls width via the `resize` tool). Test mode and
+                // statusItem mode bypass this — geometry is fixed there.
+                guard !config.testMode, !config.statusItem else { return }
+                guard let h = json["height"] as? Int else { return }
+                let current = window.contentLayoutRect.size
+                // Cap at visible screen height so agents pushing infinite
+                // surface stacks don't sail past the menu bar.
+                let screenHeight = window.screen?.visibleFrame.height ?? 1200
+                let cappedHeight = max(160, min(CGFloat(h), screenHeight))
+                // Only resize when the difference is meaningful; the
+                // ResizeObserver feedback loop would otherwise trigger
+                // sub-pixel oscillation on every reflow.
+                if abs(current.height - cappedHeight) >= 2 {
+                    window.setContentSize(NSSize(width: current.width, height: cappedHeight))
+                }
+                return
+            }
+
             if json["userAction"] != nil || json["error"] != nil {
                 writeToStdout(json)
             } else {

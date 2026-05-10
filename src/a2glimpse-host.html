@@ -10900,19 +10900,31 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
     }
     return null;
   }
+  var DEBUG_SURFACE_ID = "__a2glimpse_debug";
   var A2GlimpseApp = class extends i4 {
-    static properties = { surfaceId: { state: true }, surface: { state: true }, errorText: { state: true } };
+    // visibleSurfaceIds is an Array (insertion-ordered) of surfaceIds the agent
+    // has called beginRendering for. The renderer's processor tracks ALL
+    // surfaces (visible + pre-render staged); we render only what was begun.
+    // tick increments on every dispatch so Lit re-reads from the processor.
+    static properties = {
+      visibleSurfaceIds: { state: true },
+      tick: { state: true },
+      errorText: { state: true },
+    };
     static styles = i`
-    :host { display: block; min-height: 100vh; box-sizing: border-box; padding: 18px; color: CanvasText; background: Canvas; font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+    :host { display: block; box-sizing: border-box; padding: 18px; color: CanvasText; background: Canvas; font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
     .empty { color: color-mix(in srgb, CanvasText 58%, Canvas); }
     .error { color: #b42318; white-space: pre-wrap; }
-    a2ui-surface { min-height: 0; max-height: none; }
+    .stack { display: flex; flex-direction: column; gap: 14px; }
+    .stack > a2ui-surface { display: block; min-height: 0; max-height: none; }
+    .debug-wrap { border: 1px dashed color-mix(in srgb, CanvasText 30%, Canvas); border-radius: 8px; padding: 8px 10px; background: color-mix(in srgb, Canvas 92%, CanvasText 8%); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    .debug-wrap::before { content: "debug · " attr(data-surface-id); display: block; opacity: 0.6; margin-bottom: 6px; letter-spacing: 0.04em; }
   `;
     constructor() {
       super();
       this.processor = Data.createSignalA2uiMessageProcessor();
-      this.surfaceId = null;
-      this.surface = null;
+      this.visibleSurfaceIds = [];
+      this.tick = 0;
       this.errorText = "";
       new i5(this, { context: themeContext, initialValue: defaultTheme });
     }
@@ -10921,33 +10933,70 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
       this.addEventListener("a2uiaction", (event) => this.handleAction(event));
       window.a2glimpse = { dispatch: (message) => this.dispatchA2ui(message) };
       window.dispatchEvent(new CustomEvent("a2glimpse-host-ready"));
+      // Test mode renders to a fixed-size window for visual goldens; pin the
+      // host to viewport height so the rendered output matches pre-multi-surface
+      // layout. Production mode lets the host shrink-to-content so the window
+      // can auto-grow vertically as the agent stacks surfaces.
+      if (document.body?.hasAttribute("data-test-mode")) {
+        this.style.minHeight = "100vh";
+      } else {
+        // Auto-grow: any reflow inside the stack pushes a content-height ping
+        // to Swift. The bridge is one-way page->Swift; Swift rate-limits.
+        this.__resizeObserver = new ResizeObserver(() => this.notifyContentSize());
+        requestAnimationFrame(() => {
+          if (this.shadowRoot) this.__resizeObserver.observe(this.shadowRoot.host);
+        });
+      }
+    }
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      this.__resizeObserver?.disconnect();
+    }
+    notifyContentSize() {
+      try {
+        const rect = this.getBoundingClientRect();
+        // Round up to whole pixels; the host adds its own padding.
+        const height = Math.ceil(rect.height);
+        const width = Math.ceil(rect.width);
+        window.webkit?.messageHandlers?.glimpse?.postMessage(
+          JSON.stringify({ __a2glimpse_resize_to_content: true, height, width })
+        );
+      } catch (_) {
+        /* bridge unavailable (non-WKWebView preview); swallow */
+      }
     }
     dispatchA2ui(message) {
       try {
-        const incomingSurfaceId = message?.surfaceUpdate?.surfaceId ?? message?.dataModelUpdate?.surfaceId ?? message?.beginRendering?.surfaceId ?? message?.deleteSurface?.surfaceId ?? null;
-        if (incomingSurfaceId && this.surfaceId && incomingSurfaceId !== this.surfaceId) {
-          throw new Error(`single-surface POC only supports surface '${this.surfaceId}', got '${incomingSurfaceId}'`);
-        }
-        if (incomingSurfaceId && !this.surfaceId) this.surfaceId = incomingSurfaceId;
         this.processor.processMessages([message]);
-        this.refreshSurface();
+        // Track the visible-surface stack ourselves. beginRendering adds (in
+        // order, no dupes); deleteSurface removes. surfaceUpdate /
+        // dataModelUpdate stage data without making a surface visible.
+        if (message?.beginRendering?.surfaceId) {
+          const sid = message.beginRendering.surfaceId;
+          if (!this.visibleSurfaceIds.includes(sid)) {
+            this.visibleSurfaceIds = [...this.visibleSurfaceIds, sid];
+          }
+        }
+        if (message?.deleteSurface?.surfaceId) {
+          const sid = message.deleteSurface.surfaceId;
+          this.visibleSurfaceIds = this.visibleSurfaceIds.filter((s) => s !== sid);
+        }
+        // Force a render even if neither begin/delete fired (e.g. dataModelUpdate).
+        this.tick++;
         this.errorText = "";
       } catch (error) {
         this.errorText = error?.message ?? String(error);
         window.glimpse?.send?.({ error: { message: this.errorText } });
       }
     }
-    refreshSurface() {
-      if (!this.surfaceId) {
-        this.surface = null;
-        return;
-      }
-      this.surface = this.processor.getSurfaces().get(this.surfaceId) ?? null;
-    }
     handleAction(event) {
       const detail = event.detail ?? {};
       const action = detail.action ?? {};
-      const surfaceId = detail.sourceComponent?.surfaceId ?? this.surfaceId ?? detail.surfaceId ?? "@default";
+      // Multi-surface fallback: if the source component carries a surfaceId,
+      // trust it. Else, if exactly one surface is visible, use that. Else
+      // "@default" — the agent should have introspected via self_check.
+      const onlyOne = this.visibleSurfaceIds.length === 1 ? this.visibleSurfaceIds[0] : null;
+      const surfaceId = detail.sourceComponent?.surfaceId ?? onlyOne ?? detail.surfaceId ?? "@default";
       const context = {};
       for (const item of action.context ?? []) {
         context[item.key] = resolveActionValue(item.value, detail.sourceComponent, detail.dataContextPath, surfaceId, this.processor);
@@ -10964,8 +11013,18 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
     }
     render() {
       if (this.errorText) return b2`<div class="error">${this.errorText}</div>`;
-      if (!this.surface) return b2`<div class="empty">Waiting for A2UI surface...</div>`;
-      return b2`<a2ui-surface .surfaceId=${this.surfaceId} .surface=${this.surface} .processor=${this.processor}></a2ui-surface>`;
+      if (this.visibleSurfaceIds.length === 0) {
+        return b2`<div class="empty">Waiting for A2UI surface...</div>`;
+      }
+      const surfaces = this.processor.getSurfaces();
+      const items = this.visibleSurfaceIds
+        .map((sid) => ({ sid, surface: surfaces.get(sid) }))
+        .filter((x) => x.surface != null);
+      return b2`<div class="stack">${items.map((x) =>
+        x.sid === DEBUG_SURFACE_ID
+          ? b2`<div class="debug-wrap" data-surface-id=${x.sid}><a2ui-surface .surfaceId=${x.sid} .surface=${x.surface} .processor=${this.processor}></a2ui-surface></div>`
+          : b2`<a2ui-surface .surfaceId=${x.sid} .surface=${x.surface} .processor=${this.processor}></a2ui-surface>`
+      )}</div>`;
     }
   };
   customElements.define("a2glimpse-app", A2GlimpseApp);
