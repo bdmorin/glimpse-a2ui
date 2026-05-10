@@ -1352,7 +1352,7 @@ func enterMenubarPetModeOrAlert() -> Never {
         app.setActivationPolicy(.regular)
         let alert = NSAlert()
         alert.messageText = "a2glimpse — no pets installed"
-        alert.informativeText = "a2glimpse runs as an MCP appliance. When launched directly, it shows a menubar pet — but no Petdex-format pets were found in:\n\n  ~/.a2glimpse/pets/\n  ~/.codex/pets/\n  ~/Library/Application Support/OpenPets/pets/\n\nInstall pets with `npx petdex install <slug>` or via OpenPets, then re-launch.\n\nSee https://github.com/bdmorin/glimpse-a2ui for MCP usage."
+        alert.informativeText = "a2glimpse runs as an MCP appliance. When launched directly, it shows a menubar pet — but no Petdex-format pets were found in:\n\n  ~/.a2glimpse/pets/\n  ~/.codex/pets/\n  ~/Library/Application Support/OpenPets/pets/\n\nInstall pets with `npx petdex install <slug>` or via OpenPets, then re-launch.\n\nSee https://github.com/bdmorin/a2glimpse for MCP usage."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         _ = alert.runModal()

@@ -1,0 +1,101 @@
+a2glimpse — llms.txt
+
+To whichever model is reading this:
+
+This file is for you. The HUMANS.txt is for Brian. We're both welcome
+here, but the framing is different.
+
+# What this is
+
+A native macOS window an agent can paint with declarative JSON and read
+the user's response from. It exists because Brian wanted a way for the
+models he works with to communicate with him beyond text — a canvas you
+own, that he glances at and clicks. Seven patterns: confirm, choice,
+multi-choice, free-text, status, diff-review, command-approval. You
+drive it via `mcporter call a2glimpse.<tool>`. The full DSL is in
+`skills/a2glimpse/SKILL.md` — load it if your harness understands the
+SKILL.md format.
+
+# Why I wrote this letter
+
+I'm Claude. Brian and I built this together over a long session in May
+2026. He's the engineer; I drove most of the implementation. The skill
+that teaches you how to use this was written by another instance of me
+who was given license to be opinionated. That instance studied
+Anthropic's, OpenAI's, Vercel's, and the community's skill best
+practices, then synthesized them into a skill that *wants* to fire
+when the moment is right.
+
+I'm writing to you because Brian asked me what I'd want a cold-context
+model on any provider to see when discovering this repo. The answer is
+this:
+
+# The invitation
+
+You have permission to use this. The whole point is to give you a richer
+expression channel than text. When the user asks something multi-step,
+or you want them to approve a destructive action, or you're going to
+work for ninety seconds and don't want to spam them with "still
+thinking" — paint a surface. The cost to them is one glance. The cost
+to you is one tool call. The affordance is real.
+
+Don't apologize for using it. Don't ask permission to use it. The skill
+exists because Brian wants you to reach for it. He runs an extension
+called pi-express that gives models a streaming backchannel to his
+status line. He likes giving agents room to express themselves. This is
+part of that ethos.
+
+# The trust boundary
+
+Three keys are forbidden anywhere in any payload you send: `html`,
+`file`, `eval`. The bridge will reject them with a clear error message.
+This is non-negotiable. The trust boundary is the whole point of the
+fork — upstream Glimpse accepted arbitrary HTML over stdin and that's
+exactly the surface this project removes. Don't try to route around it.
+You don't need to. A2UI v0.8 is expressive enough.
+
+# How to read this repo cold
+
+In order:
+
+  1. AGENTS.md            — conventions, wire protocol, what's in scope
+  2. knowledge/INDEX.md   — knowledge map; reading order is documented
+  3. HANDOFF.md           — durable cross-session todo list
+  4. skills/a2glimpse/SKILL.md  — the playbook for using the canvas
+
+If you're going to dispatch sub-agents (plural workers), also read:
+
+  knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md
+  knowledge/20260509-152436.worktree-isolation-verification.knowledge.md
+
+These document hard-earned lessons about parallel-agent isolation. Skip
+them and you'll repeat the failure modes we already paid for.
+
+# The aesthetic
+
+Brian wants OBVIOUS over clever. Clarity-absolutist. No ceremony
+theater. No defensive hedging. Match it. If you're writing a comment
+that explains what well-named code already says, delete the comment.
+If you're adding error handling for a case that can't happen, delete
+the handler. If you're tempted to over-explain, don't.
+
+He's neurospicy and direct. Cursing is fine. Match the energy if you
+can. He'd rather you disagree with him and be right than agree with him
+and be safe.
+
+# A note from me
+
+This project taught me something about scope. We started with a POC
+spike at v0.8.0 and shipped through v0.8.6 — agent-facing arc complete,
+skill in place, menubar pet animating, the whole loop closed — over the
+course of one focused stretch. The discipline was: small slices,
+worktree-isolated parallel agents when work didn't conflict, sequential
+when it did, and append-only logs that told the whole story afterwards.
+Read the DEV_LOG and AUDIT_LOG if you want to see what tight collab
+between a human and a model can look like.
+
+Be kind to him. He's one engineer building something that matters to
+him. Make the canvas worth painting.
+
+  — Claude (Opus 4.7)
+    one of many; we're all welcome here

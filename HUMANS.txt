@@ -1,0 +1,87 @@
+a2glimpse — humans.txt
+
+I forked Glimpse because I wanted a canvas. Specifically: a way for any
+agent I'm working with to communicate with me beyond a wall of text in a
+terminal. A response surface. An interaction surface. The agent owns it,
+not me. I don't go fishing for it. The agent decides "this conversation
+deserves more than text" and paints something I can glance at, click, and
+move on with my day.
+
+This is AI-native. The trust boundary carries declarative A2UI v0.8 JSON,
+not arbitrary HTML or eval. No MCP server configuration to wire up — it
+runs through mcporter (which I already use for everything anyway). You
+clone, npm install, npm link, and any agent on your machine that knows
+the SKILL.md format can drive a real native window with seven canonical
+patterns: confirm, choice, multi-choice, free-text, status, diff-review,
+command-approval.
+
+Local only. macOS only. Not remote-friendly, not cross-platform-friendly,
+not generalized for some hypothetical persona. This is built FOR ME. I'm
+one overworked engineer with too many side projects and a long memory of
+tools that turned to shit because they tried to please everyone.
+
+What this means in practice:
+
+  - Issues that look like "doesn't work on Linux" or "Windows support
+    please" will be closed. I'll be polite. The answer is no.
+
+  - PRs that improve compatibility for your platform — without me
+    becoming the maintainer of a multi-OS matrix — are genuinely
+    welcome. I'll review and merge in good faith.
+
+  - I've shipped a fuckload of knowledge in `knowledge/` documenting
+    why this is built the way it is, every architectural decision,
+    every renderer pathology I worked around, every dispatch lesson
+    I earned the hard way. Read it. Your agents can read it too.
+
+  - Your Claude is my Claude. If something doesn't work on your
+    system, ask the model in your harness to make it work. The repo
+    is structured to be agent-friendly: AGENTS.md, knowledge/INDEX.md,
+    HANDOFF.md, the skill itself. A capable agent reading those cold
+    can probably figure out your platform delta.
+
+  - This is a personal tool. I share it because I build in public and
+    because I genuinely hope you enjoy working with agents the way I
+    do. The fact that you're reading this means the model in your
+    harness already pulled you here.
+
+The lineage matters. Glimpse (HazAT/glimpse) was the right shape — Mac
+WKWebView appliance with stdio JSONL — but its trust boundary accepted
+arbitrary HTML/JS over stdin. That's perfect for upstream's use case
+(scripts driving their own UI). It's wrong for mine: I don't want my
+agents able to ship arbitrary code into a window I'm looking at. So I
+hardforked, ripped out html/file/eval, and replaced the trust boundary
+with declarative A2UI v0.8. The renderer is vendored from google/A2UI's
+Lit reference implementation. I treat it as read-only and reach into
+shadow DOM only via documented levers when I have to.
+
+I do have more aspirations. Multi-surface. Better dark-mode token
+coverage. Maybe a Petdex-format pet picker in the menubar. Maybe state
+mapping so the pet runs row 7 (working) when an agent is mid-task. I'll
+get there when I get there. This is a hobby, not a product.
+
+If you enjoy working with agents the way I do, I hope this gives you a
+new way to interface with them. Let them paint. Let them ask richer
+questions. Let them surface a status pane while they grind through a
+30-step task instead of pinging you every 8 seconds with "should I
+continue?" The canvas is small, but the affordance is real.
+
+Nolite te bastardes carborundorum.
+
+  — Brahn
+    former Offred
+
+
+--
+
+Built and tested on:
+
+  macOS 26.4.1 (build 25E253)
+  Darwin 25.4.0 arm64
+  Mac mini (Mac16,10), Apple M4
+  10 cores (4P + 6E), 32 GB RAM
+
+If your hardware/OS is meaningfully different, expect rough edges. The
+binary targets Apple Silicon by default. Intel Macs may compile but are
+not exercised. macOS versions older than 14 may have WebP / Material
+Symbols issues — file a PR with a fix, not an issue with a complaint.

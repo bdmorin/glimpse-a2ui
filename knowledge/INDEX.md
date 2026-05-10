@@ -42,6 +42,7 @@ Durable reference material for this fork. Read these before touching code in a n
 
 - [A2UI Spec Grounding](20260509-121003.a2ui-spec-grounding.knowledge.md) — local verification of A2UI v0.8 message names, renderer entry points, event shape, and eval-harness fit.
 - [a2glimpse POC Retrospective](20260509-130112.poc-retrospective.retrospective.md) — verdict, lessons learned, implemented subset, visual debugging notes, and next-step recommendations after the first visible spike.
+- [Phase 1 Visual-Regression Harness Retro](20260509-141700.phase1-visual-harness.retrospective.md) — SOFT_BLOCK finding: byte-equal comparison doesn't survive WKWebView noise; pixel-diff threshold is the load-bearing primitive that unblocks the visual harness.
 
 ## Reading Order for a Fresh Session
 

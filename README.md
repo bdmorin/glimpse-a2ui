@@ -9,8 +9,8 @@ This is a spike, not a finished product. It is intentionally allowed to fail in 
 ## Install / Build
 
 ```bash
-git clone https://github.com/bdmorin/glimpse-a2ui
-cd glimpse-a2ui
+git clone https://github.com/bdmorin/a2glimpse
+cd a2glimpse
 npm install              # postinstall compiles src/a2glimpse via swiftc
 npm link                 # puts `a2glimpse` and `a2glimpse-mcp` on PATH
 ```
