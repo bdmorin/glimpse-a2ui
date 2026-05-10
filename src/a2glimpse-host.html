@@ -81,22 +81,50 @@
        --md-sys-color-* and --md-sys-elevation-*) resolve without touching the
        IIFE. Without these, MultipleChoice/CheckBox/Card render transparent
        and look invisible. */
-    --md-sys-color-primary: #2563eb;
+    --md-sys-color-primary: #0c0d10;
     --md-sys-color-on-primary: #ffffff;
     --md-sys-color-on-surface: #1f2328;
-    --md-sys-color-outline: #d0d7de;
-    --md-sys-color-outline-variant: #e6eaee;
+    --md-sys-color-outline: #1f2328;
+    --md-sys-color-outline-variant: #c8cdd5;
     --md-sys-color-surface: #ffffff;
     --md-sys-color-surface-container-low: #f6f8fa;
     --md-sys-color-surface-container-high: #eaeef2;
     --md-sys-color-surface-container-highest: #d8dde3;
-    --md-sys-color-secondary-container: #eef3ff;
-    --md-sys-color-on-secondary-container: #1d3a8a;
-    --md-sys-elevation-level1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
-    --md-sys-elevation-level2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
+    --md-sys-color-secondary-container: #fff4dc;
+    --md-sys-color-on-secondary-container: #4a2f00;
+    --md-sys-elevation-level1: 2px 2px 0 0 rgba(15, 23, 42, 0.85);
+    --md-sys-elevation-level2: 3px 3px 0 0 rgba(15, 23, 42, 0.85);
     --default-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
     --font-family: var(--default-font-family);
     --font-family-flex: var(--default-font-family);
+    font-feature-settings: "ss01", "ss02", "cv11", "kern";
+
+    /* "Mad-scientist garage" semantic tokens. The renderer reads inline
+       `style="...: var(--a2g-*)"` from additionalStyles below, then resolves
+       these against the host element's computed style. Hover/focus light-DOM
+       rules flip the same vars, propagating into shadow DOM via inheritance.
+       This is the only mechanism that lets us drive pseudo-class-driven
+       theming without touching the IIFE. */
+    --a2g-ink: #0c0d10;
+    --a2g-ink-2: #1f2328;
+    --a2g-paper: #fbfcfd;
+    --a2g-line: #1f2328;
+    --a2g-line-soft: #c8cdd5;
+    --a2g-voltage: #ffb020;
+    --a2g-voltage-2: #f59e0b;
+    --a2g-spark: #22c55e;
+    --a2g-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+    /* Per-component vars. Resting state defaults; :hover/:focus-within rules
+       below override on the host element, propagating into the inline-styled
+       inner element via var() resolution. */
+    --a2g-btn-bg: var(--a2g-paper);
+    --a2g-btn-fg: var(--a2g-ink);
+    --a2g-btn-border: var(--a2g-line-soft);
+    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line-soft);
+    --a2g-btn-translate: 0;
+    --a2g-tf-border: var(--a2g-line-soft);
+    --a2g-tf-shadow: none;
   }
 
   /* Surface-level padding so root content doesn't hug the WKWebView chrome.
@@ -119,6 +147,80 @@
   a2ui-multiplechoice, a2ui-checkbox, a2ui-textfield, a2ui-slider { display: block; margin-bottom: 12px; }
   a2ui-multiplechoice:last-child, a2ui-checkbox:last-child,
   a2ui-textfield:last-child, a2ui-slider:last-child { margin-bottom: 0; }
+
+  /* Mad-scientist garage — Button states.
+     Primary buttons get reflected `data-primary` via the wrapperPatch below
+     (Lit's @property() doesn't auto-reflect). Resting + hover + active +
+     focus-visible all drive the same custom-property channel; the inline
+     style on the inner <button> from additionalStyles picks them up via
+     var() resolution across the shadow boundary. */
+  a2ui-button {
+    display: inline-block;
+    transition: filter 80ms ease-out;
+  }
+  a2ui-button[data-primary] {
+    --a2g-btn-bg: var(--a2g-ink);
+    --a2g-btn-fg: #ffffff;
+    --a2g-btn-border: var(--a2g-line);
+    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line);
+  }
+  a2ui-button:hover {
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line-soft);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button[data-primary]:hover {
+    --a2g-btn-bg: var(--a2g-ink-2);
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button:active {
+    --a2g-btn-shadow: 0 0 0 0 transparent;
+    --a2g-btn-translate: 2px;
+  }
+  a2ui-button:focus-within {
+    outline: 3px solid var(--a2g-voltage);
+    outline-offset: 2px;
+    border-radius: 7px;
+  }
+
+  /* TextField focus — same custom-property trick. The TextField's inner
+     <input> reads `border` via additionalStyles.TextField.border = var(--a2g-tf-border)`.
+     focus-within on the host flips the var, the input restyles. */
+  a2ui-textfield:focus-within {
+    --a2g-tf-border: var(--a2g-ink);
+    --a2g-tf-shadow: 0 0 0 3px var(--a2g-voltage);
+  }
+
+  /* Code/diff content — markdown engine emits <code> and <pre>; style them
+     to read as terminal output: monospace, tinted background, sharper. */
+  a2ui-text code, a2ui-text pre {
+    font-family: var(--a2g-mono);
+    font-size: 0.92em;
+  }
+  a2ui-text code {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--a2g-line-soft);
+  }
+  a2ui-text pre {
+    background: #0c0d10;
+    color: #e6e8eb;
+    padding: 12px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--a2g-line);
+    box-shadow: 2px 2px 0 0 var(--a2g-line);
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  a2ui-text pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
 
   /* Text usageHint typographic emphasis. The vendored renderer reflects
      `usageHint` to the `usage-hint` attribute (Lit @property reflect: true),
@@ -169,19 +271,27 @@
   body[data-color-scheme="dark"] {
     background: #0f1115;
     color: #e6e8eb;
-    --md-sys-color-primary: #7aa2ff;
-    --md-sys-color-on-primary: #0a1733;
+    --md-sys-color-primary: #ffb020;
+    --md-sys-color-on-primary: #1a1100;
     --md-sys-color-on-surface: #e6e8eb;
-    --md-sys-color-outline: #4a5160;
-    --md-sys-color-outline-variant: #2a2f38;
+    --md-sys-color-outline: #e6e8eb;
+    --md-sys-color-outline-variant: #4a5160;
     --md-sys-color-surface: #1c1f24;
     --md-sys-color-surface-container-low: #1a1d22;
     --md-sys-color-surface-container-high: #262a31;
     --md-sys-color-surface-container-highest: #30353d;
-    --md-sys-color-secondary-container: #213056;
-    --md-sys-color-on-secondary-container: #c9d6ff;
-    --md-sys-elevation-level1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 1px rgba(0, 0, 0, 0.30);
-    --md-sys-elevation-level2: 0 4px 12px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.40);
+    --md-sys-color-secondary-container: #3a2a05;
+    --md-sys-color-on-secondary-container: #ffd687;
+    --md-sys-elevation-level1: 2px 2px 0 0 rgba(255, 176, 32, 0.35);
+    --md-sys-elevation-level2: 3px 3px 0 0 rgba(255, 176, 32, 0.55);
+
+    /* a2g semantic vars in dark mode — paper inverts to ink-dark, ink
+       inverts to bone-white. Voltage stays voltage; that's the whole point. */
+    --a2g-ink: #e6e8eb;
+    --a2g-ink-2: #c8cdd5;
+    --a2g-paper: #1c1f24;
+    --a2g-line: #e6e8eb;
+    --a2g-line-soft: #4a5160;
   }
 </style>
 <style id="a2glimpse-test-mode">
@@ -10851,11 +10961,57 @@ body[data-test-mode] *:focus, body[data-test-mode] *:focus-visible {
     elements: { a: empty(), audio: empty(), body: empty(), button: empty(), h1: empty(), h2: empty(), h3: empty(), h4: empty(), h5: empty(), iframe: empty(), input: empty(), p: empty(), pre: empty(), textarea: empty(), video: empty() },
     markdown: { p: [], h1: [], h2: [], h3: [], h4: [], h5: [], ul: [], ol: [], li: [], a: [], strong: [], em: [] },
     additionalStyles: {
-      Button: { appearance: "none", border: "0", borderRadius: "8px", padding: "10px 14px", background: "#0a84ff", color: "white", font: "inherit", cursor: "pointer" },
-      Card: { border: "1px solid #d0d7de", borderRadius: "8px", padding: "16px", background: "Canvas" },
+      // Button — chunky, bordered, hard-shadow stamp. Resting/hover/active
+      // states all flow through CSS custom properties that the light-DOM
+      // host CSS flips on :hover/:active/:focus-within. transform + shadow
+      // give the tactile press feel; transition is 80ms for snap.
+      Button: {
+        appearance: "none",
+        boxSizing: "border-box",
+        border: "2px solid var(--a2g-btn-border)",
+        borderRadius: "6px",
+        padding: "10px 18px",
+        background: "var(--a2g-btn-bg)",
+        color: "var(--a2g-btn-fg)",
+        font: "inherit",
+        fontWeight: "600",
+        fontSize: "13px",
+        letterSpacing: "0.01em",
+        cursor: "pointer",
+        boxShadow: "var(--a2g-btn-shadow)",
+        transform: "translate(var(--a2g-btn-translate), var(--a2g-btn-translate))",
+        transition: "transform 80ms ease-out, box-shadow 80ms ease-out, background 80ms ease-out",
+        outline: "none"
+      },
+      // Row — flex container with explicit gap. Without this, Buttons inside
+      // Row run shoulder-to-shoulder. additionalStyles.Row lands on the inner
+      // <section>, which is already display:flex via Row's shadow CSS.
+      Row: { display: "flex", gap: "10px", alignItems: "center" },
+      // Card — same brutalist stamp shadow as buttons, smaller offset.
+      Card: {
+        border: "1.5px solid var(--a2g-line-soft)",
+        borderRadius: "8px",
+        padding: "16px",
+        background: "var(--md-sys-color-surface, Canvas)",
+        boxShadow: "2px 2px 0 0 var(--a2g-line-soft)"
+      },
       Text: { body: { margin: "0" }, h1: { margin: "0", fontSize: "24px" }, h2: { margin: "0", fontSize: "20px" }, h3: { margin: "0", fontSize: "18px" }, h4: { margin: "0" }, h5: { margin: "0" }, caption: { margin: "0", opacity: "0.75" } },
-      TextField: { appearance: "none", boxSizing: "border-box", width: "100%", border: "1px solid #d0d7de", borderRadius: "6px", padding: "8px 10px", background: "Canvas", color: "CanvasText", font: "inherit", lineHeight: "1.4" },
-      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "#0a84ff", cursor: "pointer" },
+      TextField: {
+        appearance: "none",
+        boxSizing: "border-box",
+        width: "100%",
+        border: "1.5px solid var(--a2g-tf-border)",
+        borderRadius: "6px",
+        padding: "9px 12px",
+        background: "var(--md-sys-color-surface, Canvas)",
+        color: "var(--md-sys-color-on-surface, CanvasText)",
+        font: "inherit",
+        lineHeight: "1.4",
+        boxShadow: "var(--a2g-tf-shadow)",
+        transition: "border-color 80ms ease-out, box-shadow 80ms ease-out",
+        outline: "none"
+      },
+      Slider: { appearance: "auto", width: "100%", margin: "6px 0", accentColor: "var(--a2g-voltage)", cursor: "pointer" },
       // Modal: styles the inner <section class="...Modal.element"> wrapper inside
       // the <dialog>. Gives the modal panel card-like chrome. We cannot reach
       // the <dialog> itself from outside the renderer's shadow DOM — its
@@ -11118,6 +11274,26 @@ lit-html/directives/style-map.js:
     }
   });
 })();
+</script>
+<script>
+// Wrapper-side reflection of a2ui-button's `primary` property to a
+// `data-primary` attribute on the host. The renderer declares `primary`
+// via Lit's @property() WITHOUT {reflect: true}, so light-DOM CSS can't
+// see it from the outside. We need that signal to differentiate primary
+// vs secondary button visuals — primary gets ink fill / white text /
+// hard ink shadow, secondary gets paper fill / ink text / soft shadow.
+//
+// Implementation: hook the update lifecycle, add or remove the attribute
+// based on the property's truthiness each render. Cheap, idempotent, and
+// the IIFE remains untouched. Same pattern as the Tabs/Modal patches below.
+customElements.whenDefined('a2ui-button').then((ButtonCtor) => {
+  const orig = ButtonCtor.prototype.update;
+  ButtonCtor.prototype.update = function (changedProps) {
+    if (this.primary) this.setAttribute('data-primary', '');
+    else this.removeAttribute('data-primary');
+    return orig.call(this, changedProps);
+  };
+});
 </script>
 <script>
 // Wrapper-side fix for a renderer defaultTheme gap: theme.components.Tabs is
