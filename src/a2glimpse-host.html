@@ -60,69 +60,98 @@
     background: Canvas;
     color: CanvasText;
   }
+  /* Charcoal Workshop is committed-dark. Forcing color-scheme: dark on
+     :root makes the UA `Canvas` / `CanvasText` system colors (which the
+     renderer's a2glimpse-app shadow uses for :host bg/color) resolve to
+     dark variants. Without this, the renderer's shadow paints white over
+     body's charcoal. The signal also propagates into shadow-DOM via
+     inheritance, so the IIFE's `:host { color-scheme: var(--color-scheme); }`
+     rule resolves correctly too. */
+  :root { color-scheme: dark; }
   html { height: 100%; }
   body { min-height: 100%; box-sizing: border-box; }
   body {
     /* Scrollbar suppressed at body level — surface chrome is fixed-size in
-       this appliance; renderer components manage their own internal overflow
-       (Card, Column inner sections use overflow: auto within their shadow
-       trees). Letting body scroll on micro-overflow added a permanent
-       trailing scrollbar that wasn't load-bearing. */
+       this appliance; renderer components manage their own internal overflow.
+       See earlier comment for rationale. */
     overflow: hidden;
     padding: 20px 24px;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-    font-size: 14px;
-    line-height: 1.45;
-    background: #fbfcfd;
-    /* Material Design tokens consumed by the vendored renderer. CSS custom
-       properties pierce shadow-DOM boundaries via var() reference, so defining
-       them on body makes the renderer's vendored CSS (which references
-       --md-sys-color-* and --md-sys-elevation-*) resolve without touching the
-       IIFE. Without these, MultipleChoice/CheckBox/Card render transparent
-       and look invisible. */
-    --md-sys-color-primary: #0c0d10;
-    --md-sys-color-on-primary: #ffffff;
-    --md-sys-color-on-surface: #1f2328;
-    --md-sys-color-outline: #1f2328;
-    --md-sys-color-outline-variant: #c8cdd5;
-    --md-sys-color-surface: #ffffff;
-    --md-sys-color-surface-container-low: #f6f8fa;
-    --md-sys-color-surface-container-high: #eaeef2;
-    --md-sys-color-surface-container-highest: #d8dde3;
-    --md-sys-color-secondary-container: #fff4dc;
-    --md-sys-color-on-secondary-container: #4a2f00;
-    --md-sys-elevation-level1: 2px 2px 0 0 rgba(15, 23, 42, 0.85);
-    --md-sys-elevation-level2: 3px 3px 0 0 rgba(15, 23, 42, 0.85);
-    --default-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    /* Charcoal Workshop typeface — mono, IDE / oscilloscope feel. Stack falls
+       through Brian's installed Nerd Fonts (CommitMono, Hack) before generic
+       JetBrains/SF/system mono. Fonts not installed gracefully degrade. */
+    font-family: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "Hack", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--a2g-paper);
+    color: var(--a2g-ink);
+    /* Material Design tokens consumed by the vendored renderer. Re-pointed at
+       the always-charcoal --a2g-* tokens below. CSS custom properties pierce
+       shadow-DOM boundaries via var() reference, so defining them on body
+       makes the renderer's vendored CSS resolve without touching the IIFE. */
+    --md-sys-color-primary: var(--a2g-voltage);
+    --md-sys-color-on-primary: #1a1100;
+    --md-sys-color-on-surface: var(--a2g-ink);
+    --md-sys-color-outline: var(--a2g-line);
+    --md-sys-color-outline-variant: var(--a2g-line-soft);
+    --md-sys-color-surface: var(--a2g-card);
+    --md-sys-color-surface-container-low: var(--a2g-paper-up);
+    --md-sys-color-surface-container-high: var(--a2g-card);
+    --md-sys-color-surface-container-highest: var(--a2g-card-up);
+    --md-sys-color-secondary-container: #3a2a05;
+    --md-sys-color-on-secondary-container: #ffd687;
+    --md-sys-elevation-level1: 2px 2px 0 0 var(--a2g-line);
+    --md-sys-elevation-level2: 3px 3px 0 0 var(--a2g-line);
+    --default-font-family: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
     --font-family: var(--default-font-family);
     --font-family-flex: var(--default-font-family);
-    font-feature-settings: "ss01", "ss02", "cv11", "kern";
+    font-feature-settings: "ss01", "ss02", "calt", "liga", "kern";
 
-    /* "Mad-scientist garage" semantic tokens. The renderer reads inline
-       `style="...: var(--a2g-*)"` from additionalStyles below, then resolves
-       these against the host element's computed style. Hover/focus light-DOM
-       rules flip the same vars, propagating into shadow DOM via inheritance.
-       This is the only mechanism that lets us drive pseudo-class-driven
-       theming without touching the IIFE. */
-    --a2g-ink: #0c0d10;
-    --a2g-ink-2: #1f2328;
-    --a2g-paper: #fbfcfd;
-    --a2g-line: #1f2328;
-    --a2g-line-soft: #c8cdd5;
+    /* CHARCOAL WORKSHOP semantic tokens. Always-dark canvas regardless of
+       system appearance. The "garage" — black workbench, voltage-amber
+       accent, bone-white components and text. Cards step UP from body
+       (lighter), not down, so they read as elevated surfaces. The
+       previously-system-aware light/dark token swap is gone; this aesthetic
+       is committed to. (Decision rationale + alternatives considered are
+       documented in the commit body that introduced this.)
+
+       Inversion ladder:
+         paper       — body / canvas (deepest)
+         paper-up    — subtle elevation (rare; used for input fills)
+         card        — Card surface (one tone up from paper)
+         card-up     — emphasized surface, modal backdrop element
+         ink         — primary text on body
+         ink-2       — secondary/dim text
+         line        — strong borders (primary buttons, focused inputs)
+         line-soft   — subtle borders (resting cards, dividers)
+         voltage     — accent (focus rings, warning chips, active state)
+         voltage-2   — voltage hover/active variant
+         spark       — success / confirmation accent
+         danger      — error / destructive accent
+    */
+    --a2g-paper: #0c0d10;
+    --a2g-paper-up: #14161b;
+    --a2g-card: #1a1d22;
+    --a2g-card-up: #262a31;
+    --a2g-ink: #e6e8eb;
+    --a2g-ink-2: #b3b8c0;
+    --a2g-line: #e6e8eb;
+    --a2g-line-soft: #3a3f48;
     --a2g-voltage: #ffb020;
     --a2g-voltage-2: #f59e0b;
     --a2g-spark: #22c55e;
-    --a2g-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    --a2g-danger: #ef4444;
+    --a2g-mono: "CommitMono Nerd Font", "CommitMono", "Hack Nerd Font", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 
     /* Per-component vars. Resting state defaults; :hover/:focus-within rules
        below override on the host element, propagating into the inline-styled
        inner element via var() resolution. */
-    --a2g-btn-bg: var(--a2g-paper);
+    --a2g-btn-bg: var(--a2g-card);
     --a2g-btn-fg: var(--a2g-ink);
     --a2g-btn-border: var(--a2g-line-soft);
     --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line-soft);
     --a2g-btn-translate: 0;
+    --a2g-tf-bg: var(--a2g-paper-up);
     --a2g-tf-border: var(--a2g-line-soft);
     --a2g-tf-shadow: none;
   }
@@ -189,49 +218,18 @@
     padding-top: 28px;
   }
 
-  /* Dark-mode token pair. Activated when Swift pushes
-     `document.body.dataset.colorScheme = 'dark'` after detecting
-     NSApp.effectiveAppearance == .darkAqua (and on KVO updates as the user
-     toggles the system setting). When the attribute is absent, the light
-     tokens above apply — no Swift signal is required for basic operation.
-     Test-mode is pinned to light by Swift (does not subscribe to system
-     appearance changes), keeping visual goldens deterministic.
+  /* Charcoal Workshop is always-on — no light/dark token swap. The body
+     block above declares charcoal tokens regardless of system appearance.
+     Swift still pushes `body.dataset.colorScheme` for backward compat
+     with code that reads it, but no rules respond to it here.
 
-     Tokens were chosen deliberately rather than inverted:
-       - surface: #1c1f24 (Material 3 dark neutral, slightly warm)
-       - surface-container-*: stepped neutrals so Card/Modal still read
-         as elevated against the body background (#0f1115)
-       - primary: #7aa2ff (lightened brand blue for AA contrast on dark
-         surface)
-       - outlines: low-chroma greys that are visible but not loud
-       - elevation: black-toned shadows; dark mode elevations work via
-         tone shift more than shadow, but a faint shadow still helps
-     Phase 4b. */
-  body[data-color-scheme="dark"] {
-    background: #0f1115;
-    color: #e6e8eb;
-    --md-sys-color-primary: #ffb020;
-    --md-sys-color-on-primary: #1a1100;
-    --md-sys-color-on-surface: #e6e8eb;
-    --md-sys-color-outline: #e6e8eb;
-    --md-sys-color-outline-variant: #4a5160;
-    --md-sys-color-surface: #1c1f24;
-    --md-sys-color-surface-container-low: #1a1d22;
-    --md-sys-color-surface-container-high: #262a31;
-    --md-sys-color-surface-container-highest: #30353d;
-    --md-sys-color-secondary-container: #3a2a05;
-    --md-sys-color-on-secondary-container: #ffd687;
-    --md-sys-elevation-level1: 2px 2px 0 0 rgba(255, 176, 32, 0.35);
-    --md-sys-elevation-level2: 3px 3px 0 0 rgba(255, 176, 32, 0.55);
-
-    /* a2g semantic vars in dark mode — paper inverts to ink-dark, ink
-       inverts to bone-white. Voltage stays voltage; that's the whole point. */
-    --a2g-ink: #e6e8eb;
-    --a2g-ink-2: #c8cdd5;
-    --a2g-paper: #1c1f24;
-    --a2g-line: #e6e8eb;
-    --a2g-line-soft: #4a5160;
-  }
+     Rationale (rewindable from this commit's body): the previous mode-aware
+     token logic created a corner-seam issue against macOS dark window
+     chrome and forced the brutalist aesthetic to read differently per mode.
+     Always-charcoal commits to one direction; the alternatives considered
+     and the reasoning are captured in the commit body that introduced
+     this. Future-Brian can pivot back to mode-aware by reading those notes
+     and the design-track timeline. */
 </style>
 <style id="a2glimpse-transparent-mode">
 /* Minority Report mode — activated when Swift launches with --transparent
