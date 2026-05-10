@@ -11371,10 +11371,54 @@ const A2G_APP_SHADOW_CSS = `
     border-radius: 7px;
   }
 
-  /* TextField focus — same custom-property trick. */
+  /* TextField states. Border lifts to ink-2 on hover (subtle), to ink
+     plus voltage outline on focus-within. Same custom-prop channel as
+     buttons; the inline style on the inner <input> reads the host vars. */
+  a2ui-textfield:hover {
+    --a2g-tf-border: var(--a2g-ink-2);
+  }
   a2ui-textfield:focus-within {
     --a2g-tf-border: var(--a2g-ink);
     --a2g-tf-shadow: 0 0 0 3px var(--a2g-voltage);
+  }
+
+  /* Input-component label typography. The renderer renders <label> in the
+     shadow tree of TextField/MultipleChoice/CheckBox. Font inheritance
+     carries the mono stack down through shadow boundaries via inheritance.
+     A small letter-spacing + slight uppercase mood gives input labels the
+     workshop-signage feel without re-styling every component. */
+  a2ui-textfield, a2ui-multiplechoice, a2ui-checkbox, a2ui-slider {
+    font-feature-settings: "ss01", "calt", "kern";
+    letter-spacing: 0.01em;
+  }
+
+  /* MultipleChoice + CheckBox accent on host. The renderer doesn't consume
+     additionalStyles for these (one of the upstream gaps captured in B1
+     filings). What we CAN do from outside is provide a focus-within
+     visible-state via outline, since the user's keyboard interaction
+     surface is the host element. accent-color cascades into native
+     <input type="checkbox"|"radio"> through shadow boundaries via
+     inheritance — gives both the voltage tick treatment for free. */
+  a2ui-multiplechoice, a2ui-checkbox {
+    accent-color: var(--a2g-voltage);
+  }
+  a2ui-multiplechoice:focus-within, a2ui-checkbox:focus-within {
+    outline: 2px solid var(--a2g-voltage);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  /* Slider — mono-friendly height + voltage accent already from
+     additionalStyles.Slider. Add hover lift via filter and focus-visible
+     halo via outline. The native track + thumb are styled by accent-color
+     plus UA defaults; the wrapper additions are about affordance, not
+     repainting the native control (which would require shadow CSS that
+     can't reach into the input). */
+  a2ui-slider:hover { filter: brightness(1.15); }
+  a2ui-slider:focus-within {
+    outline: 2px solid var(--a2g-voltage);
+    outline-offset: 4px;
+    border-radius: 4px;
   }
 `;
 
