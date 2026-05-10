@@ -1,6 +1,6 @@
 # a2glimpse Handoff — Forward Inventory
 
-**Last updated:** 2026-05-10 (post `v0.8.7-mad-scientist-garage` — design-track + iconography merged, goldens re-blessed at hash `7be8486d67c6`)
+**Last updated:** 2026-05-10 (post `v0.8.8-charcoal-workshop` PRE-BLESS tag on `design-track` — handed to feature-track session for merge + re-bless)
 
 If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowledge/INDEX.md` first.** This file is the durable, cross-session "what's next" list — the canonical source of truth for outstanding work. It supersedes any session-scoped todo lists.
 
@@ -16,12 +16,38 @@ If you're a fresh agent or a future-Brian session: **read `AGENTS.md` and `knowl
 | `v0.8.5-menubar-pet` | Menubar pet mode (Petdex-format compat, Finder-launch is fun, not a stub) |
 | `v0.8.6-agent-skill` | A3 agent skill, HUMANS/LLMS rebrand, MCP resize tool, slim titlebar, B1 fourth filing |
 | `v0.8.7-mad-scientist-garage` (head of `main`) | Garage theme + shadow-DOM scoping fix + minority-report mode + iconography cheatsheet + visual goldens re-blessed at hash `7be8486d67c6` |
+| `v0.8.8-charcoal-workshop` (head of `design-track`, **PRE-BLESS**) | Charcoal Workshop arc — always-dark canvas + mono typography + looser breathing + forward-compat usageHint variants + input love. Four discrete commits, alternatives-considered captured per commit body. Awaits merge + cumulative re-bless. |
 
-The appliance ships. MCP bridge is wired and verified end-to-end. Menubar mode gives the `.app` a graceful direct-launch behavior. Visual regression at 0.0000% noise floor across 9 fixtures at the new hash. Trust boundary holds.
+The appliance ships. MCP bridge is wired and verified end-to-end. Menubar mode gives the `.app` a graceful direct-launch behavior. Trust boundary holds across all branches.
 
 ## Outstanding Work — durable cross-session todo list
 
 Each item below is **actionable in a future session**. Status reflects what's true on `origin/main` as of this update. Update this file when you complete an item; treat it as the authoritative project todo list.
+
+---
+
+### [ ] DT-2 — Charcoal Workshop merge + cumulative re-bless (`v0.8.8-charcoal-workshop`)
+
+**Status:** Tagged `v0.8.8-charcoal-workshop` on `design-track`, **pre-bless**. Brian flagged this as a feature-track session pickup — feature-track owns the merge + bless cycle.
+
+**Branch state:** `design-track` is 4 commits ahead of `main` (head `0004c0f`). Each commit independently revertable; alternatives-considered captured in commit bodies.
+
+**Merge protocol (per `knowledge/20260509-160946.agent-dispatch-procedure.knowledge.md`):**
+
+1. Rebase or fast-forward `design-track` onto `main` if main has moved.
+2. FF or merge into `main`.
+3. Cumulative re-bless of visual goldens at the new renderer hash. The four-commit theme arc shifts the host bundle hash; **all** existing fixtures at `test/__snapshots__/7be8486d67c6/` will diff. Per the procedure:
+   ```
+   npm run test:visual:update
+   git rm -r test/__snapshots__/<old-hash>/
+   git add test/__snapshots__/<new-hash>/
+   git commit -m "test(visual): re-bless goldens at <new-hash> after charcoal-workshop merge"
+   ```
+4. Tag the post-bless state — recommend `v0.8.8-charcoal-workshop-blessed` to distinguish from the pre-bless tag (or move the existing tag forward; either is defensible).
+
+**Note for the merger:** the kitchen-sink composite work (`knowledge/20260510-035000.visual-fixture-consolidation-decision.knowledge.md`) may be in flight or queued on `design-track` as additional commits beyond `0004c0f`. Check `git log v0.8.8-charcoal-workshop..design-track` before merging — if there are commits there, they're either composite-fixture work or further iteration. Coordinate with the design-track session before integrating.
+
+**Trust boundary check before merging:** verify no IIFE edits, no new public stdin commands, no html/file/eval surface introduced. Trust contract intact across all four commits per the design-track session, but worth confirming on a final read.
 
 ---
 
