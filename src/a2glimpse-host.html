@@ -127,100 +127,39 @@
     --a2g-tf-shadow: none;
   }
 
-  /* Surface-level padding so root content doesn't hug the WKWebView chrome.
-     We pad the body container rather than a2ui-surface so we don't override
-     the renderer's :host display semantics (Lit shadow-DOM components define
-     their own display via :host; external selectors beat that and break
-     layout). */
+  /* Surface-level padding so root content doesn't hug the WKWebView chrome. */
   a2glimpse-app {
     display: block;
   }
 
-  /* Card outer margin — host element accepts margin without disturbing the
-     internal :host display rule. */
-  a2ui-card {
-    margin: 4px 0;
-  }
+  /* IMPORTANT — selector-targeted rules for renderer components (a2ui-button,
+     a2ui-card, a2ui-text, a2ui-textfield, etc.) live INSIDE this body's
+     <style> would NOT match those elements. They render inside
+     a2glimpse-app's shadow root (and nested deeper), and CSS rules can't
+     cross shadow-DOM boundaries via selector matching.
 
-  /* Light-DOM host-level layout for input components. The shadow-DOM chrome
-     is owned by the vendored renderer; we only touch the host element. */
-  a2ui-multiplechoice, a2ui-checkbox, a2ui-textfield, a2ui-slider { display: block; margin-bottom: 12px; }
-  a2ui-multiplechoice:last-child, a2ui-checkbox:last-child,
-  a2ui-textfield:last-child, a2ui-slider:last-child { margin-bottom: 0; }
+     Custom-property inheritance DOES cross — that's how the --a2g-* tokens
+     declared on `body` reach the rendered Lit-shadow components. That's the
+     load-bearing channel for theming.
 
-  /* Mad-scientist garage — Button states.
-     Primary buttons get reflected `data-primary` via the wrapperPatch below
-     (Lit's @property() doesn't auto-reflect). Resting + hover + active +
-     focus-visible all drive the same custom-property channel; the inline
-     style on the inner <button> from additionalStyles picks them up via
-     var() resolution across the shadow boundary. */
-  a2ui-button {
-    display: inline-block;
-    transition: filter 80ms ease-out;
-  }
-  a2ui-button[data-primary] {
-    --a2g-btn-bg: var(--a2g-ink);
-    --a2g-btn-fg: #ffffff;
-    --a2g-btn-border: var(--a2g-line);
-    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line);
-  }
-  a2ui-button:hover {
-    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line-soft);
-    --a2g-btn-translate: -1px;
-  }
-  a2ui-button[data-primary]:hover {
-    --a2g-btn-bg: var(--a2g-ink-2);
-    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line);
-    --a2g-btn-translate: -1px;
-  }
-  a2ui-button:active {
-    --a2g-btn-shadow: 0 0 0 0 transparent;
-    --a2g-btn-translate: 2px;
-  }
-  a2ui-button:focus-within {
-    outline: 3px solid var(--a2g-voltage);
-    outline-offset: 2px;
-    border-radius: 7px;
-  }
+     Selector rules — `:hover`, `[data-primary]`, `<code>` styling, etc. —
+     are injected into the renderer shadow trees via the `a2glimpse-shadow-
+     style-injection` script block at the bottom of this document. See also
+     knowledge/<date>.shadow-dom-css-scoping-pathology.knowledge.md for the
+     full root-cause record.
 
-  /* TextField focus — same custom-property trick. The TextField's inner
-     <input> reads `border` via additionalStyles.TextField.border = var(--a2g-tf-border)`.
-     focus-within on the host flips the var, the input restyles. */
-  a2ui-textfield:focus-within {
-    --a2g-tf-border: var(--a2g-ink);
-    --a2g-tf-shadow: 0 0 0 3px var(--a2g-voltage);
-  }
+     Body-level selectors here apply ONLY to elements that genuinely live in
+     the document's light DOM: <body>, <a2glimpse-app> (host), and any host
+     elements whose hosts are direct light-DOM children of body. Since
+     <a2glimpse-app> creates its own shadow root and renders everything
+     through it, that shrinks "things addressable from here" to essentially
+     {body, a2glimpse-app}. */
 
-  /* Code/diff content — markdown engine emits <code> and <pre>; style them
-     to read as terminal output: monospace, tinted background, sharper. */
-  a2ui-text code, a2ui-text pre {
-    font-family: var(--a2g-mono);
-    font-size: 0.92em;
-  }
-  a2ui-text code {
-    background: var(--md-sys-color-secondary-container);
-    color: var(--md-sys-color-on-secondary-container);
-    padding: 1px 5px;
-    border-radius: 4px;
-    border: 1px solid var(--a2g-line-soft);
-  }
-  a2ui-text pre {
-    background: #0c0d10;
-    color: #e6e8eb;
-    padding: 12px 14px;
-    border-radius: 6px;
-    border: 1.5px solid var(--a2g-line);
-    box-shadow: 2px 2px 0 0 var(--a2g-line);
-    overflow-x: auto;
-    line-height: 1.5;
-  }
-  a2ui-text pre code {
-    background: transparent;
-    color: inherit;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-  }
+  /* Code/diff content — same shadow-scope caveat. The styles below
+     populate <code> and <pre> elements rendered by the markdown engine
+     INSIDE a2ui-text's own shadow root (separate scope from
+     a2glimpse-app's). They're injected per-instance via the Text-shadow
+     hook in the same script block. */
 
   /* Text usageHint typographic emphasis. The vendored renderer reflects
      `usageHint` to the `usage-hint` attribute (Lit @property reflect: true),
@@ -11274,6 +11213,143 @@ lit-html/directives/style-map.js:
     }
   });
 })();
+</script>
+<script id="a2glimpse-shadow-style-injection">
+// Selector-targeted CSS for renderer components must live INSIDE the
+// shadow tree where those elements actually render. Body's <style>
+// can't reach them — only custom-property inheritance crosses the
+// shadow boundary. See:
+//   knowledge/<date>.shadow-dom-css-scoping-pathology.knowledge.md
+//
+// Two scopes:
+//   1. each a2ui-surface.shadowRoot — holds the entire surface tree
+//      (a2ui-root > column > row > button). Inject per-instance via
+//      firstUpdated hook. NOTE: the buttons live two shadow roots deep
+//      from <body> (a2glimpse-app shadow > a2ui-surface > a2ui-surface
+//      shadow > a2ui-root > ...). Targeting a2glimpse-app's shadow
+//      doesn't reach them; a2ui-surface's shadow is the right scope.
+//   2. each a2ui-text.shadowRoot — holds markdown-emitted <code>/<pre>.
+//      Inject per-instance via firstUpdated hook.
+//
+// Both injections read from CSS custom properties declared on body,
+// which DO cross shadow boundaries via inheritance. So all the
+// --a2g-* tokens just work in here.
+
+const A2G_APP_SHADOW_CSS = `
+  /* Card outer margin */
+  a2ui-card { margin: 4px 0; }
+
+  /* Light-DOM host-level layout for input components */
+  a2ui-multiplechoice, a2ui-checkbox, a2ui-textfield, a2ui-slider {
+    display: block;
+    margin-bottom: 12px;
+  }
+  a2ui-multiplechoice:last-child, a2ui-checkbox:last-child,
+  a2ui-textfield:last-child, a2ui-slider:last-child { margin-bottom: 0; }
+
+  /* Mad-scientist garage — Button states.
+     Primary buttons get reflected data-primary via the wrapperPatch below.
+     States flip CSS custom properties; the inline style on the inner
+     <button> from additionalStyles picks them up via var() resolution. */
+  a2ui-button {
+    display: inline-block;
+    transition: filter 80ms ease-out;
+  }
+  a2ui-button[data-primary] {
+    --a2g-btn-bg: var(--a2g-ink);
+    --a2g-btn-fg: var(--a2g-paper);
+    --a2g-btn-border: var(--a2g-line);
+    --a2g-btn-shadow: 2px 2px 0 0 var(--a2g-line);
+  }
+  a2ui-button:hover {
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line-soft);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button[data-primary]:hover {
+    --a2g-btn-bg: var(--a2g-ink-2);
+    --a2g-btn-shadow: 3px 3px 0 0 var(--a2g-line);
+    --a2g-btn-translate: -1px;
+  }
+  a2ui-button:active {
+    --a2g-btn-shadow: 0 0 0 0 transparent;
+    --a2g-btn-translate: 2px;
+  }
+  a2ui-button:focus-within {
+    outline: 3px solid var(--a2g-voltage);
+    outline-offset: 2px;
+    border-radius: 7px;
+  }
+
+  /* TextField focus — same custom-property trick. */
+  a2ui-textfield:focus-within {
+    --a2g-tf-border: var(--a2g-ink);
+    --a2g-tf-shadow: 0 0 0 3px var(--a2g-voltage);
+  }
+`;
+
+const A2G_TEXT_SHADOW_CSS = `
+  /* Code/diff content from the markdown engine renders into a2ui-text's
+     shadow root. Style as terminal output: monospace, tinted, sharp. */
+  code, pre {
+    font-family: var(--a2g-mono);
+    font-size: 0.92em;
+  }
+  code {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--a2g-line-soft);
+  }
+  pre {
+    background: var(--a2g-ink);
+    color: #e6e8eb;
+    padding: 12px 14px;
+    border-radius: 6px;
+    border: 1.5px solid var(--a2g-line);
+    box-shadow: 2px 2px 0 0 var(--a2g-line);
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+`;
+
+// Inject into each a2ui-surface instance's shadow root on first render.
+// The surface tree (a2ui-root > column > row > button) lives INSIDE
+// a2ui-surface's shadow, two shadow roots deep from body. This is the
+// load-bearing scope for selector-targeted theming.
+customElements.whenDefined('a2ui-surface').then((SurfaceCtor) => {
+  const orig = SurfaceCtor.prototype.firstUpdated;
+  SurfaceCtor.prototype.firstUpdated = function (changed) {
+    if (orig) orig.call(this, changed);
+    if (this.shadowRoot && !this.shadowRoot.querySelector('style[data-a2g-surface-shadow]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-a2g-surface-shadow', '');
+      style.textContent = A2G_APP_SHADOW_CSS;
+      this.shadowRoot.appendChild(style);
+    }
+  };
+});
+
+// Inject into each a2ui-text instance's shadow root on first render.
+customElements.whenDefined('a2ui-text').then((TextCtor) => {
+  const orig = TextCtor.prototype.firstUpdated;
+  TextCtor.prototype.firstUpdated = function (changed) {
+    if (orig) orig.call(this, changed);
+    if (this.shadowRoot && !this.shadowRoot.querySelector('style[data-a2g-text-shadow]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-a2g-text-shadow', '');
+      style.textContent = A2G_TEXT_SHADOW_CSS;
+      this.shadowRoot.appendChild(style);
+    }
+  };
+});
 </script>
 <script>
 // Wrapper-side reflection of a2ui-button's `primary` property to a
